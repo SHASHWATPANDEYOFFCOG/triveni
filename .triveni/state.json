@@ -1,21 +1,23 @@
 {
-  "milestone": "M3",
+  "milestone": "M4",
   "status": "starting",
   "attempts": 0,
   "green": [
     "M0",
     "M1",
-    "M2"
+    "M2",
+    "M3"
   ],
   "blocked": null,
   "notes": [
     "env: python 3.14.3, node 24.14, git 2.50; no make, no uv, no docker on this machine",
     "all pinned deps verified installable with cp314 wheels incl. ortools, scipy, cryptography",
     "M1: money-lint (AST) + hypothesis prove no float can enter a money path, both directions",
-    "M2: RFC 6962 Merkle log verified exhaustively (130 sizes vs recursive oracle, 1225 consistency pairs); verify() localises tampering by index AND by tree size"
+    "M2: RFC 6962 Merkle log verified exhaustively (130 sizes vs recursive oracle, 1225 consistency pairs); verify() localises tampering by index AND by tree size",
+    "M3: posting requires a cryptographically valid audit receipt (subject-bound); policy engine is total under 300-example property test"
   ],
   "metrics_snapshot": {
-    "tests": 104,
+    "tests": 404,
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass"
