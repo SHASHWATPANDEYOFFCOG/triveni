@@ -1,0 +1,12 @@
+{
+  "milestone": "M0",
+  "status": "in_progress",
+  "attempts": 0,
+  "green": [],
+  "blocked": null,
+  "notes": [
+    "env: python 3.14.3, node 24.14, git 2.50; no make, no uv, no docker on this machine",
+    "all pinned deps verified installable with cp314 wheels incl. ortools, scipy, cryptography"
+  ],
+  "metrics_snapshot": null
+}

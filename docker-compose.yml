@@ -1,0 +1,39 @@
+# `docker compose up` brings up the API and the dashboard with no credentials.
+# Both services default to offline rails and cassette-replayed LLM calls.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      TRIVENI_RAILS: offline
+      TRIVENI_LLM_MODE: replay
+      TRIVENI_SEED: "20260101"
+      PYTHONHASHSEED: "0"
+    ports:
+      - "8000:8000"
+    volumes:
+      # The audit log and DuckDB warehouse survive restarts so that the
+      # consistency proof between two tree heads spans container lifetimes.
+      - triveni-state:/app/.triveni/state
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  triveni-state:

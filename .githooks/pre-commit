@@ -1,0 +1,9 @@
+#!/bin/sh
+# Refuse the commit if anything credential-shaped is staged.
+PY=python
+[ -x .venv/bin/python ] && PY=.venv/bin/python
+[ -x .venv/Scripts/python.exe ] && PY=.venv/Scripts/python.exe
+"$PY" -m scripts.secretscan || {
+  echo "pre-commit: secret scan failed, commit refused"
+  exit 1
+}

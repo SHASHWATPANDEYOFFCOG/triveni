@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "triveni"
+version = "0.1.0"
+description = "Triveni - the AI Finance Controller: three ledgers, one balanced set of books, with a guarantee."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+# Every pin below was verified to install and its API exercised on this machine
+# before being written here. See docs/adr/0003-dependency-verification.md.
+dependencies = [
+  "pydantic>=2.11,<3",
+  "numpy>=2.0,<3",
+  "scipy>=1.14,<2",
+  "scikit-learn>=1.5,<2",
+  "statsmodels>=0.14,<1",
+  "ortools>=9.10",
+  "cryptography>=43",
+  "duckdb>=1.1",
+  "structlog>=24",
+  "orjson>=3.10",
+  "python-dateutil>=2.9",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "hypothesis>=6.100", "mypy>=1.11", "ruff>=0.6", "httpx2>=2.12"]
+
+[project.scripts]
+triveni = "cli.__main__:main"
+
+[tool.setuptools]
+packages = ["core", "core.audit", "ingest", "ingest.adapters", "recon", "forecast", "qa", "api", "data", "cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
+markers = ["slow: long-running", "golden: golden-file metric tests"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["core", "recon"]
+strict = true
+warn_unreachable = true
+disallow_any_explicit = false
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["scipy.*", "sklearn.*", "statsmodels.*", "ortools.*", "numpy.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RET", "ARG", "PTH", "TRY", "N"]
+ignore = ["E501", "TRY003", "TRY300", "B008", "SIM108", "N806", "N803"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG", "B", "SIM", "N"]
+"scripts/*" = ["TRY", "ARG"]
