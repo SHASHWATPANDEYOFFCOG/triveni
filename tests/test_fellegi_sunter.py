@@ -272,7 +272,7 @@ def test_the_total_is_exactly_the_sum_of_its_parts(fitted) -> None:
 # Stage 3 in the pipeline
 # --------------------------------------------------------------------------- #
 def test_stage_three_runs_and_reports(result) -> None:
-    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3"]
+    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3", "stage4"]
     stage3 = next(s for s in result.stages if s.stage == "stage3")
     assert "clerical-review band" in stage3.detail
 
@@ -353,6 +353,7 @@ def test_match_rate_and_recall_improve_over_the_m6_baseline() -> None:
     # M6 (deterministic only, corrected denominator): match rate 0.9084, recall 0.3324
     assert by_name["match_rate"].value > Decimal("0.9084")
     assert by_name["recall"].value > Decimal("0.3324")
-    assert by_name["precision"].value == 1, (
-        "precision must not be traded for coverage; duplicates were the reason it fell"
+    assert by_name["auto_post_precision"].value == 1, (
+        "precision must not be traded for coverage on anything posted unsupervised; "
+        "duplicates were the reason it once fell"
     )

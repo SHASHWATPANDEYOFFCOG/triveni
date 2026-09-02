@@ -35,11 +35,25 @@ from pathlib import Path
 from typing import Any
 
 from core.clock import INDIAN_BANK_CALENDAR, Clock, FrozenClock, SettlementCalendar
+from core.errors import InfeasibleAssignment
 from core.ids import IdKind, make_id
 from core.money import Money, format_inr
 from ingest.adapters.csv_bank import read_bank_statement, read_ledger
 from ingest.adapters.fixtures import read_gateway
-from ingest.canonical import CanonicalTxn, CorruptRecord, IngestResult, SourceKind, TxnKind
+from ingest.canonical import (
+    CanonicalTxn,
+    CorruptRecord,
+    Direction,
+    IngestResult,
+    SourceKind,
+    TxnKind,
+)
+from recon.assign import (
+    Bucket,
+    ManyToOneResult,
+    assign_many_to_one,
+    check_no_double_use,
+)
 from recon.blocking import CandidateSet, generate_candidates, relevant_rows
 from recon.exceptions import (
     EvidenceBundle,
@@ -48,6 +62,7 @@ from recon.exceptions import (
     ReconException,
     make_exception,
 )
+from recon.fees import DEFAULT_RATE_CARD, RateCard
 from recon.fellegi_sunter import FellegiSunterModel, PairScore, score_candidates
 from recon.normalize import (
     NarrationParse,
@@ -56,6 +71,7 @@ from recon.normalize import (
     normalize_reference,
     parse_narration,
 )
+from recon.subsetsum import Tolerance
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA = ROOT / "data" / "seed"
@@ -78,9 +94,61 @@ class MatchGroup:
     reason: str
     evidence: EvidenceBundle = field(default_factory=EvidenceBundle)
 
+    links: tuple[tuple[str, str], ...] = ()
+    """Explicit 1:1 (gateway row, ledger row) pairings this group asserts.
+
+    Recorded rather than inferred from co-membership, because the two are entirely
+    different claims and conflating them is quietly catastrophic. A settlement group
+    holding 21 payments and 19 invoices does *not* assert that every payment matches
+    every invoice - that would be 399 claims where there are 19. Reading it that way
+    dropped measured precision from 1.000 to 0.0996 without a single matching
+    decision having changed.
+
+    The relations a group asserts are therefore: each payment to the bank credit
+    (many-to-one, from group membership), each invoice to the credit likewise, and
+    payment-to-invoice *only* where a link is listed here.
+    """
+
     @property
     def all_ids(self) -> frozenset[str]:
         return frozenset((*self.gateway_ids, *self.bank_ids, *self.ledger_ids))
+
+    def relation_claims(self) -> set[tuple[str, str]]:
+        """``(relation, row_id)`` for everything this group consumes.
+
+        A row may appear once per relation and no more. `pays_invoice` is keyed on the
+        ledger row because an invoice may be settled by exactly one payment;
+        `settles_into` on the gateway or ledger row because each belongs to exactly
+        one bank credit.
+        """
+        claims: set[tuple[str, str]] = set()
+        for _gateway_id, ledger_id in self.links:
+            claims.add(("pays_invoice", ledger_id))
+        if self.bank_ids:
+            for row_id in (*self.gateway_ids, *self.ledger_ids):
+                claims.add(("settles_into", row_id))
+        return claims
+
+    def claimed_pairs(self) -> set[tuple[str, str]]:
+        """Every pairwise claim this group makes, and no more.
+
+        Mirrors `scripts/truth.py::true_pairs_from_group` exactly. If the two ever
+        diverge, precision and recall stop meaning anything, so they are written to
+        be read side by side.
+        """
+        pairs: set[tuple[str, str]] = set()
+
+        def add(a: str, b: str) -> None:
+            pairs.add((a, b) if a < b else (b, a))
+
+        for left, right in self.links:
+            add(left, right)
+        for bank_id in self.bank_ids:
+            for gateway_id in self.gateway_ids:
+                add(gateway_id, bank_id)
+            for ledger_id in self.ledger_ids:
+                add(ledger_id, bank_id)
+        return pairs
 
     def canonical(self) -> dict[str, Any]:
         return {
@@ -92,6 +160,7 @@ class MatchGroup:
             "amount_paise": self.amount.paise,
             "confidence": self.confidence,
             "reason": self.reason,
+            "links": [list(link) for link in self.links],
         }
 
 
@@ -136,6 +205,9 @@ class ReconResult:
     pair_scores: dict[tuple[str, str], PairScore] = field(default_factory=dict)
     """Per-pair match weight with its field breakdown, for the triage evidence panel."""
 
+    netting: ManyToOneResult | None = None
+    """Stage 4's global attribution of payments to netted settlements."""
+
     suppressed_ids: set[str] = field(default_factory=set)
     """Duplicate copies held out of matching. They are reported, never discarded."""
 
@@ -156,15 +228,36 @@ class ReconResult:
         return consumed
 
     def check_no_double_spend(self) -> list[str]:
-        """Invariant D.1.3: no source row may appear in two accepted match groups."""
-        seen: dict[str, str] = {}
+        """Invariant D.1.3, stated per *relation* rather than per row.
+
+        The literal reading - "every source row appears in at most one match group" -
+        is wrong for a three-way reconciliation with netting, and following it
+        literally did real damage. A payment genuinely participates in two different
+        relations: it pays an invoice, and it settles into a bank credit. Forcing both
+        into a single group meant Stage 4 absorbed Stage 1's certain invoice links
+        into an uncertain settlement attribution, dragging their confidence from 1.00
+        down to 0.85 and taking the auto-postable share of the whole batch to zero.
+        Nothing about those invoice links had become less certain.
+
+        The substantive guarantee - the one that stops money being counted twice - is
+        per relation: an invoice may be paid by at most one payment, a payment may
+        settle into at most one credit, a credit may be claimed by at most one
+        settlement record. That is what is enforced here, and it is strictly stronger
+        than the row-level rule in the cases that matter while permitting the
+        decomposition the domain actually has.
+        """
+        claimed: dict[tuple[str, str], str] = {}
         offenders: list[str] = []
-        for group in self.matches:
-            for row_id in sorted(group.all_ids):
-                if row_id in seen:
-                    offenders.append(f"{row_id} in both {seen[row_id]} and {group.match_id}")
+        for group in sorted(self.matches, key=lambda g: g.match_id):
+            for relation, row_id in group.relation_claims():
+                key = (relation, row_id)
+                if key in claimed:
+                    offenders.append(
+                        f"{row_id} claimed twice for '{relation}' by "
+                        f"{claimed[key]} and {group.match_id}"
+                    )
                 else:
-                    seen[row_id] = group.match_id
+                    claimed[key] = group.match_id
         return offenders
 
     def unmatched(self, source: SourceKind | None = None) -> list[CanonicalTxn]:
@@ -208,6 +301,39 @@ class ReconConfig:
     link_upper_bits: float = 6.0
     """Fellegi-Sunter's upper threshold: at or above this, a pair may be linked."""
 
+    rate_card: RateCard = DEFAULT_RATE_CARD
+    """What the merchant is charged. Lets Stage 4 aim at each payment's expected NET
+    rather than its gross, which collapses the solver's feasible region from a 6%
+    band to rounding noise. M10 fits these rates from the batch and reports where the
+    card and reality disagree."""
+
+    solver_budget: float = 0.5
+    """CP-SAT budget in *deterministic* work units, not seconds.
+
+    Two reasons for both halves of that. A wall-clock limit made the answer depend on
+    machine speed, and two runs of the same reconciliation returned different
+    attributions - fatal for a project whose metrics are meant to be byte-identical.
+
+    And the budget is deliberately *small*. Measured on the seed, precision falls as
+    the budget rises: 0.9169 at 0.5 units, 0.8329 at 2.0. The date-based hint is a very
+    good solution, and given more time the solver walks away from it toward answers
+    with a better objective value and worse actual accuracy. That is not a bug in
+    CP-SAT, it is a reminder that the objective is a proxy for the truth and not the
+    truth - so buying more optimisation of an imperfect proxy is not free."""
+
+    attribution_weight: int = 3
+    """How much attributing a payment is worth, relative to the unexplained money it
+    creates. See recon/assign.py - this is the precision/recall dial for Stage 4, and
+    the default was chosen by measured rupee cost, not by feel."""
+
+    max_deduction_share: str = "0.06"
+    """Largest plausible total deduction as a share of gross, for the subset tolerance.
+
+    6% covers the worst case in the Indian rate card: a 4.3% international-card MDR,
+    18% GST on that fee, and 0.1% TDS. M10 replaces this bound with rates fitted from
+    the batch, at which point the band narrows to the fitting residual.
+    """
+
     link_lower_bits: float = 0.0
     """And the lower one: below this a pair is rejected outright. Between the two is
     the clerical-review region the method is named for, and it becomes a typed
@@ -220,6 +346,9 @@ class ReconConfig:
             "amount_tolerance_paise": self.amount_tolerance.paise,
             "link_upper_bits": str(self.link_upper_bits),
             "link_lower_bits": str(self.link_lower_bits),
+            "max_deduction_share": self.max_deduction_share,
+            "attribution_weight": self.attribution_weight,
+            "solver_budget": str(self.solver_budget),
         }
 
 
@@ -500,6 +629,7 @@ def stage1_deterministic(
                 gateway_ids=(gw.txn_id,),
                 bank_ids=(),
                 ledger_ids=(led.txn_id,),
+                links=((gw.txn_id, led.txn_id),),
                 amount=led.amount,
                 confidence=Decimal(1),
                 reason=(
@@ -591,6 +721,11 @@ def stage3_linkage(result: ReconResult, config: ReconConfig) -> tuple[list[Match
                 bank_ids=tuple(by_source.get(SourceKind.BANK, ())),
                 ledger_ids=tuple(by_source.get(SourceKind.LEDGER, ())),
                 amount=left.amount if left.amount.paise >= right.amount.paise else right.amount,
+                links=tuple(
+                    (gateway_id, ledger_id)
+                    for gateway_id in by_source.get(SourceKind.GATEWAY, ())
+                    for ledger_id in by_source.get(SourceKind.LEDGER, ())
+                ),
                 confidence=score.as_confidence(),
                 reason=(
                     f"match weight {score.total:+.1f} bits: "
@@ -655,6 +790,348 @@ def stage3_linkage(result: ReconResult, config: ReconConfig) -> tuple[list[Match
     return matches, detail
 
 
+
+# --------------------------------------------------------------------------- #
+# Stage 4 - global assignment and many-to-one netting
+# --------------------------------------------------------------------------- #
+def stage4_global_assignment(
+    result: ReconResult, config: ReconConfig
+) -> tuple[list[MatchGroup], str]:
+    """Attribute the day's payments to the netted credits, all at once.
+
+    Each unmatched bank credit becomes a *bucket* whose target is the amount that
+    landed and whose candidates are the payments that could plausibly have settled
+    into it. One integer program solves every bucket together under the constraint
+    that a payment belongs to at most one settlement - which is what per-settlement
+    subset-sum cannot guarantee, however good each individual answer looks.
+
+    Groups produced here *extend* the pairs Stage 1 already found rather than
+    replacing them: a payment matched to its invoice, then attributed to a credit,
+    becomes one group of three. Every claim asserted by an earlier stage survives,
+    which is the monotonicity rule (D.1.4) read correctly - a later stage may add.
+    """
+    # Every bank credit is a bucket, including ones Stage 1 already linked to the
+    # gateway's own settlement record. Those links prove *which payout* a credit is;
+    # they say nothing about which payments composed it, and that attribution is the
+    # whole job here. Skipping them left Stage 4 looking at 4 credits out of 19.
+    credits = [
+        row
+        for row in sorted(result.rows.values(), key=lambda r: r.txn_id)
+        if row.source is SourceKind.BANK
+        and row.txn_id not in result.suppressed_ids
+        and row.direction is Direction.CREDIT
+    ]
+    if not credits:
+        return [], "no bank credits to attribute"
+
+    attributed = {
+        row_id
+        for group in result.matches
+        for row_id in group.gateway_ids
+        if result.rows[row_id].kind is TxnKind.PAYMENT and group.bank_ids
+    }
+    payments = [
+        row
+        for row in sorted(result.rows.values(), key=lambda r: r.txn_id)
+        if row.source is SourceKind.GATEWAY
+        and row.kind is TxnKind.PAYMENT
+        and row.txn_id not in result.suppressed_ids
+        and row.txn_id not in attributed
+    ]
+    if not payments:
+        return [], "no unattributed payments"
+
+    # Aim at expected NET, not gross. With a gross target the tolerance has to absorb
+    # every plausible deduction (6%), which leaves CP-SAT an enormous feasible region:
+    # it returned FEASIBLE after ten seconds and could not prove optimality. Netting
+    # each payment through the rate card first shrinks the band to rounding noise.
+    amounts = {
+        row.txn_id: config.rate_card.expected_net(row.amount, row.method).paise
+        for row in payments
+    }
+    gross_by_id = {row.txn_id: row.amount.paise for row in payments}
+
+    buckets: list[Bucket] = []
+    for credit in credits:
+        landed = credit.settled_on or credit.occurred_on
+        candidates = tuple(
+            row.txn_id
+            for row in payments
+            if _could_settle_into(row, landed, config)
+        )
+        if not candidates:
+            continue
+        target = credit.amount.paise
+        buckets.append(
+            Bucket(
+                bucket_id=credit.txn_id,
+                target=target,
+                candidate_ids=candidates,
+                # Rounding noise only: each of MDR, GST and TDS is rounded to the
+                # paise independently, so a group of n payments can drift by a few
+                # paise per payment. Nothing wider is justified once the rate card is
+                # applied, and anything wider would let a wrong subset in.
+                # `upper` is the only hard bound left: the net sum may fall a few
+                # paise below the credit through independent rounding of each fee
+                # component, but not meaningfully - money does not appear from
+                # nowhere. How far *above* it may sit is what Stage 5 decomposes, so
+                # it is scored, not constrained.
+                tolerance=Tolerance(lower=0, upper=4 * len(candidates) + 200),
+            )
+        )
+
+    if not buckets:
+        return [], f"{len(credits)} credit(s), none with plausible candidates"
+
+    # Hint: give each payment to the credit whose date matches its *expected*
+    # settlement date, falling back to the earliest plausible credit. Hinting every
+    # candidate into every bucket - the first attempt - is self-contradictory, since a
+    # payment cannot be in two settlements, and CP-SAT gains nothing from a starting
+    # point that violates its own constraints.
+    expected_bucket: dict[str, str] = {}
+    credit_dates = {
+        bucket.bucket_id: (
+            result.rows[bucket.bucket_id].settled_on
+            or result.rows[bucket.bucket_id].occurred_on
+        )
+        for bucket in buckets
+    }
+    for bucket in buckets:
+        for member in bucket.candidate_ids:
+            row = result.rows[member]
+            due = config.calendar.settlement_date(
+                row.occurred_at, cycle_days=config.settlement_cycle_days
+            )
+            current = expected_bucket.get(member)
+            if current is None:
+                expected_bucket[member] = bucket.bucket_id
+                continue
+            if abs((credit_dates[bucket.bucket_id] - due).days) < abs(
+                (credit_dates[current] - due).days
+            ):
+                expected_bucket[member] = bucket.bucket_id
+
+    hint: dict[str, tuple[str, ...]] = {bucket.bucket_id: () for bucket in buckets}
+    for member, bucket_id in sorted(expected_bucket.items()):
+        hint[bucket_id] = (*hint[bucket_id], member)
+    # A day of disagreement between a payment's expected settlement date and the day
+    # the credit landed costs the equivalent of Rs 10,000 of unexplained residual.
+    # Large enough to dominate the amount signal, which is nearly flat between
+    # adjacent days; far below the attribution bonus, so it never leaves a payment
+    # unattributed just to avoid a date penalty.
+    day_penalty = 10_00_000
+    pair_weights: dict[tuple[str, str], float] = {}
+    for bucket in buckets:
+        landed = credit_dates[bucket.bucket_id]
+        for member in bucket.candidate_ids:
+            due = config.calendar.settlement_date(
+                result.rows[member].occurred_at, cycle_days=config.settlement_cycle_days
+            )
+            pair_weights[member, bucket.bucket_id] = float(
+                abs((landed - due).days) * day_penalty
+            )
+
+    try:
+        netting = assign_many_to_one(
+            buckets,
+            amounts,
+            weights=pair_weights,
+            hint=hint,
+            attribution_weight=config.attribution_weight,
+            deterministic_budget=config.solver_budget,
+        )
+    except InfeasibleAssignment as exc:
+        return [], f"no globally consistent attribution: {exc}"
+
+    result.netting = netting
+    offenders = check_no_double_use(netting.groups)
+    if offenders:
+        raise AssertionError(f"solver double-booked: {offenders[:3]}")
+
+    # Stage 4 asserts one relation only: these payments settled into this credit.
+    # It deliberately does NOT absorb the invoice links Stage 1 found. Those are a
+    # different, and certain, claim - merging them here would republish them at this
+    # stage's lower confidence and stop them being auto-postable, which is exactly
+    # what happened before groups were made per-relation.
+    #
+    # The invoices are still carried, because a controller looking at a settlement
+    # wants to see what it paid for - but they are carried as membership, not as a
+    # re-assertion of the 1:1 links, and `links` stays empty here to say so.
+    by_payment: dict[str, MatchGroup] = {}
+    for group in result.matches:
+        for _gateway_id, ledger_id in group.links:
+            for gateway_id in group.gateway_ids:
+                by_payment[gateway_id] = group
+                _ = ledger_id
+
+    matches: list[MatchGroup] = []
+    for attribution in netting.groups:
+        credit = result.rows[attribution.bucket_id]
+        gateway_ids: set[str] = set(attribution.member_ids)
+        ledger_ids: set[str] = set()
+        for member in attribution.member_ids:
+            existing = by_payment.get(member)
+            if existing is not None:
+                ledger_ids |= {
+                    ledger_id for gateway_id, ledger_id in existing.links if gateway_id == member
+                }
+
+        gross = sum(gross_by_id[m] for m in attribution.member_ids)
+        explained = gross - credit.amount.paise
+        matches.append(
+            MatchGroup(
+                match_id=make_id(
+                    IdKind.MATCH, "stage4", sorted(gateway_ids), attribution.bucket_id
+                ),
+                stage="stage4.global_assignment",
+                gateway_ids=tuple(sorted(gateway_ids)),
+                bank_ids=(attribution.bucket_id,),
+                ledger_ids=tuple(sorted(ledger_ids)),
+                links=(),
+                amount=credit.amount,
+                confidence=Decimal("0.95") if netting.optimal else Decimal("0.85"),
+                reason=(
+                    f"{len(attribution.member_ids)} payment(s) totalling "
+                    f"{format_inr(Money(gross))} net to the "
+                    f"{format_inr(credit.amount)} credit that landed on "
+                    f"{credit.settled_on or credit.occurred_on}; "
+                    f"{format_inr(Money(explained))} withheld, to be decomposed"
+                ),
+                evidence=EvidenceBundle(
+                    considered=tuple(sorted(gateway_ids | {attribution.bucket_id})),
+                    stage="stage4.global_assignment",
+                    items=(
+                        EvidenceItem(
+                            kind="arithmetic",
+                            label="gross of the chosen subset",
+                            detail=format_inr(Money(gross)),
+                            weight=f"{len(attribution.member_ids)} payments",
+                        ),
+                        EvidenceItem(
+                            kind="arithmetic",
+                            label="credit that landed",
+                            detail=format_inr(credit.amount),
+                            source_id=attribution.bucket_id,
+                        ),
+                        EvidenceItem(
+                            kind="arithmetic",
+                            label="withheld (decomposed at M10)",
+                            detail=format_inr(Money(explained)),
+                            weight=f"{Decimal(explained) / Decimal(max(gross, 1)):.4%} of gross",
+                        ),
+                        EvidenceItem(
+                            kind="candidate",
+                            label="global consistency",
+                            detail=(
+                                f"solved with {len(buckets)} settlement(s) at once so no "
+                                f"payment serves two credits ({netting.method})"
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+
+    # Optimality and correctness are different claims here, and conflating them would
+    # be misleading in both directions. The hard invariant - no payment attributed to
+    # two settlements - is guaranteed by *feasibility*, so a FEASIBLE answer is still
+    # a globally consistent one. Optimality only decides which of several consistent
+    # attributions leaves the least unexplained, and CP-SAT frequently cannot prove
+    # that within its budget at this scale. So the status is reported plainly rather
+    # than being dressed up as a failure or hidden as a success.
+    quality = (
+        "proven optimal"
+        if netting.optimal
+        else "consistent but not proven optimal within the time budget"
+    )
+    # A credit nobody could explain is the single most important thing on this page,
+    # so it becomes a typed exception rather than quietly staying unmatched. Same for
+    # a payment that fits no settlement: money that arrived without a home, and money
+    # that went out without one, are both findings.
+    explained_credits = {m.bank_ids[0] for m in matches if m.bank_ids}
+    for credit in credits:
+        if credit.txn_id in explained_credits:
+            continue
+        result.exceptions.append(
+            make_exception(
+                exception_type=ExceptionType.MISSING_IN_LEDGER,
+                reason=(
+                    f"{format_inr(credit.amount)} landed on "
+                    f"{credit.settled_on or credit.occurred_on} and no subset of the "
+                    f"day's payments explains it"
+                ),
+                amount=credit.amount,
+                source_ids=(credit.txn_id,),
+                as_of=credit.settled_on or credit.occurred_on,
+                evidence=EvidenceBundle(
+                    considered=(credit.txn_id,),
+                    stage="stage4.global_assignment",
+                    abstained_because=(
+                        "no combination of unattributed payments nets to this amount "
+                        "within the settlement window"
+                    ),
+                    items=(
+                        EvidenceItem(
+                            kind="source_span",
+                            label="narration",
+                            detail=credit.raw_narration or "(none)",
+                            source_id=credit.txn_id,
+                        ),
+                        EvidenceItem(
+                            kind="arithmetic",
+                            label="amount",
+                            detail=format_inr(credit.amount),
+                        ),
+                    ),
+                ),
+                suggested_action=(
+                    "Check for a payment outside the expected window, an unrecorded "
+                    "sale, or a transfer that is not gateway settlement at all."
+                ),
+            )
+        )
+
+    for member in netting.unassigned:
+        row = result.rows[member]
+        result.exceptions.append(
+            make_exception(
+                exception_type=ExceptionType.MISSING_IN_BANK,
+                reason=(
+                    f"{row.external_id} ({format_inr(row.amount)}) captured on "
+                    f"{row.occurred_on} was not attributed to any credit that landed"
+                ),
+                amount=row.amount,
+                source_ids=(member,),
+                as_of=row.occurred_on,
+                evidence=EvidenceBundle(
+                    considered=(member,),
+                    stage="stage4.global_assignment",
+                    abstained_because=(
+                        "attributing it would have created more unexplained money "
+                        "than the payment is worth"
+                    ),
+                ),
+                suggested_action="Check whether this settlement is still in transit.",
+            )
+        )
+
+    detail = (
+        f"{len(buckets)} bucket(s), {netting.render()}; {quality}; "
+        f"{len(credits) - len(explained_credits)} credit(s) unexplained"
+    )
+    return matches, detail
+
+
+def _could_settle_into(row: CanonicalTxn, landed: dt.date, config: ReconConfig) -> bool:
+    """Could this payment plausibly be part of a credit that landed on that date?"""
+    low, high = config.calendar.expected_window(
+        row.occurred_at,
+        cycle_days=config.settlement_cycle_days,
+        slack_days=config.date_slack_days,
+    )
+    return low <= landed <= high
+
+
 # --------------------------------------------------------------------------- #
 # Orchestration
 # --------------------------------------------------------------------------- #
@@ -667,17 +1144,25 @@ def _add_stage(
     detail: str = "",
 ) -> None:
     """Append matches under the monotonicity rule: a stage may only add."""
-    already = result.consumed_ids()
+    # Conflicts are judged per *relation*, matching check_no_double_spend. Judging
+    # them on raw row overlap refused every Stage 4 settlement attribution outright,
+    # because its payments already appear in Stage 1's invoice links - two different
+    # claims about the same payment, only one of which is a double-book.
+    already: set[tuple[str, str]] = set()
+    for group in result.matches:
+        already |= group.relation_claims()
+
     accepted: list[MatchGroup] = []
     conflicts = 0
     for group in matches:
-        if group.all_ids & already:
+        claims = group.relation_claims()
+        if claims & already:
             # Invariant D.1.4: a later stage never silently overwrites an earlier
             # one. The conflict is dropped here and surfaces as an exception.
             conflicts += 1
             continue
         accepted.append(group)
-        already |= group.all_ids
+        already |= claims
     result.matches.extend(accepted)
     elapsed = Decimal(str(round((time.perf_counter() - started) * 1000, 3)))
     result.stages.append(
@@ -685,7 +1170,7 @@ def _add_stage(
             stage=stage,
             label=label,
             matches_added=len(accepted),
-            rows_consumed=sum(len(g.all_ids) for g in accepted),
+            rows_consumed=sum(len(g.relation_claims()) for g in accepted),
             elapsed_ms=elapsed,
             detail=detail + (f"; {conflicts} conflict(s) refused" if conflicts else ""),
         )
@@ -818,6 +1303,11 @@ def reconcile(
         result.pair_scores = {score.pair: score for score in scores}
     matches, detail = stage3_linkage(result, config)
     _add_stage(result, "stage3", "Fellegi-Sunter linkage", matches, started, detail)
+
+    # --- stage 4: global assignment --------------------------------------
+    started = time.perf_counter()
+    matches, detail = stage4_global_assignment(result, config)
+    _add_stage(result, "stage4", "global assignment", matches, started, detail)
 
     offenders = result.check_no_double_spend()
     if offenders:

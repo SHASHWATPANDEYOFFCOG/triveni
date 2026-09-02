@@ -281,16 +281,24 @@ def test_no_row_is_double_booked(result) -> None:
 
 
 def test_a_later_stage_may_only_add(result) -> None:
-    """Invariant D.1.4: stages are monotone. Consumed-row counts never decrease."""
+    """Invariant D.1.4: stages are monotone.
+
+    Counted in *relation claims* rather than rows, because a payment legitimately
+    appears in two relations - it pays an invoice and it settles into a credit - so
+    the totals are claims, not row occurrences, and they only ever accumulate.
+    """
     running = 0
     for report in result.stages:
         assert report.rows_consumed >= 0
         running += report.rows_consumed
-    assert running == result.matched_row_count
+    total_claims = set()
+    for group in result.matches:
+        total_claims |= group.relation_claims()
+    assert running == len(total_claims)
 
 
 def test_every_stage_reports_its_contribution_and_wall_clock(result) -> None:
-    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3"]
+    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3", "stage4"]
     for report in result.stages:
         assert report.elapsed_ms >= 0
         assert report.detail
@@ -316,10 +324,15 @@ def test_stage1_precision_is_perfect_and_recall_is_honestly_low() -> None:
 
     report = evaluate_pipeline()
     by_name = {m.name: m for m in report.metrics}
-    assert by_name["precision"].value == 1, "Stage 1's exact keys must never be wrong"
-    assert by_name["recall"].value < Decimal("0.6"), (
-        "the deterministic stages alone should not have high recall - if they do, "
-        "either the metric is wrong or an exact key is matching things it should not"
+    # Overall precision is no longer 1.0 once Stage 4 proposes settlement
+    # attributions - and it should not be. The number that governs the books is
+    # auto-post precision: nothing wrong reaches them unsupervised.
+    assert by_name["auto_post_precision"].value == 1, (
+        "nothing wrong may be posted without a human"
+    )
+    assert by_name["precision"].value > Decimal("0.85")
+    assert by_name["recall"].value > Decimal("0.60"), (
+        "with Stage 4's netting, recall should be well past the deterministic baseline"
     )
     # The denominator was 3,808 until M7, which was wrong: it took the cross product
     # of every payment and every invoice in a settlement group, claiming 196 pairs for

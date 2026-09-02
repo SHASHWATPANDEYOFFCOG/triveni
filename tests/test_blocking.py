@@ -304,7 +304,7 @@ def test_blocking_is_wired_into_the_pipeline_as_stage_two() -> None:
 
     result = reconcile()
     stages = [s.stage for s in result.stages]
-    assert stages == ["stage0", "stage1", "stage2", "stage3"]
+    assert stages == ["stage0", "stage1", "stage2", "stage3", "stage4"]
     assert result.candidates is not None
     assert result.candidates.pairs, "Stage 2 produced no candidates for Stage 3"
     detail = next(s for s in result.stages if s.stage == "stage2").detail

@@ -63,19 +63,40 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
         row = result.rows.get(row_id)
         return row.external_id if row else row_id
 
+    # Ask each group what it claims rather than inferring it from co-membership. A
+    # settlement group holding 21 payments and 19 invoices asserts 19 payment-to-
+    # invoice links, not 399 - see MatchGroup.claimed_pairs, which is written to be
+    # read alongside scripts/truth.py::true_pairs_from_group.
     predicted_pairs: set[tuple[str, str]] = set()
     for match in result.matches:
-        predicted_pairs |= cross_source_pairs(
-            [external(i) for i in match.gateway_ids],
-            [external(i) for i in match.bank_ids],
-            [external(i) for i in match.ledger_ids],
-        )
+        for a, b in match.claimed_pairs():
+            left, right = external(a), external(b)
+            predicted_pairs.add((left, right) if left < right else (right, left))
 
     tp = len(predicted_pairs & true_pairs)
     fp = len(predicted_pairs - true_pairs)
     fn = len(true_pairs - predicted_pairs)
     confusion = Confusion(tp=tp, fp=fp, fn=fn)
     total_rows = len(result.rows)
+
+    # Proposing and posting are different acts, and one precision number for both
+    # hides the thing that matters. A match the policy engine routes to a human costs
+    # two minutes of review; one it auto-posts and gets wrong corrupts the books and
+    # is found weeks later. Stage 4's netting proposals are confident enough to be
+    # useful and not confident enough to post unsupervised, which is a legitimate
+    # answer - but only if it is reported as one.
+    from core.policy import PolicyConfig
+
+    post_threshold = PolicyConfig().min_confidence
+    auto_pairs: set[tuple[str, str]] = set()
+    for match in result.matches:
+        if match.confidence < post_threshold:
+            continue
+        for a, b in match.claimed_pairs():
+            left, right = external(a), external(b)
+            auto_pairs.add((left, right) if left < right else (right, left))
+    auto_tp = len(auto_pairs & true_pairs)
+    auto_fp = len(auto_pairs - true_pairs)
 
     registry = MetricRegistry()
     registry.count(
@@ -102,6 +123,21 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
         description="of the cross-source pairs that exist, the share we claimed",
     )
     registry.scalar("f1", confusion.f1, description="harmonic mean of precision and recall")
+    registry.rate(
+        "auto_post_precision",
+        auto_tp,
+        max(auto_tp + auto_fp, 1),
+        description=(
+            f"precision restricted to matches confident enough to post unsupervised "
+            f"(confidence >= {post_threshold}); the rest go to human triage"
+        ),
+    )
+    registry.rate(
+        "auto_post_coverage",
+        len(auto_pairs),
+        max(len(predicted_pairs), 1),
+        description="share of proposed pairs that would post without a human",
+    )
 
     # The llm_call_rate denominator is bank statement rows, and the reason is stated
     # so it can be argued with rather than taken on trust: a bank narration is the
@@ -162,16 +198,23 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
     # byte-identical across runs, and a timing that varies by a millisecond breaks
     # that. Throughput is `make bench`'s job; accuracy is this one's. Per-stage
     # timings are still carried on ReconResult for the UI's stage ladder.
+    # Only pairs Triveni would post *unsupervised* are charged as false matches. A
+    # wrong proposal that a human rejects costs two minutes of review; a wrong posting
+    # corrupts the books and is found weeks later, which is the ~15x asymmetry the
+    # cost model exists to express. Charging every proposal at the posted rate made
+    # the run look catastrophically unprofitable while the thing it was pricing -
+    # unsupervised error - was zero.
     model = CostModel()
+    reviewed = len(predicted_pairs - auto_pairs)
     breakdown = price(
         OutcomeMix(
             rows=total_rows,
-            auto_posted=len(result.matches),
-            true_matches=tp,
-            false_matches=fp,
+            auto_posted=len(auto_pairs),
+            true_matches=auto_tp,
+            false_matches=auto_fp,
             false_non_matches=fn,
-            needs_review=len(result.exceptions),
-            exposed_by_false_matches=sum_money(match.amount for match in result.matches[:fp]),
+            needs_review=reviewed + len(result.exceptions),
+            exposed_by_false_matches=sum_money(match.amount for match in result.matches[:auto_fp]),
         ),
         model,
     )
