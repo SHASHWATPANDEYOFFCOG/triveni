@@ -61,7 +61,11 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RET", "ARG", "PTH", "TRY", "N"]
-ignore = ["E501", "TRY003", "TRY300", "B008", "SIM108", "N806", "N803"]
+# N818 wants every exception to end in "Error". Triveni's errors are named for
+# what happened - `raise TamperDetected(...)`, `raise KillSwitchEngaged(...)` -
+# because these strings surface in the audit log and the triage UI, where a
+# domain sentence reads better than a suffix convention. Deliberate, not lazy.
+ignore = ["E501", "TRY003", "TRY300", "B008", "SIM108", "N806", "N803", "N818"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ARG", "B", "SIM", "N"]

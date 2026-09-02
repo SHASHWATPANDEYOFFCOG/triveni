@@ -2,8 +2,8 @@
 
 Human-readable mirror of `.triveni/state.json`. Rewritten every loop iteration.
 
-**Current milestone:** M0 — repo, tooling, CI, Makefile, Docker, `.env.example`, ADR 0001
-**Status:** in progress
+**Current milestone:** M2 — Merkle audit log + inclusion/consistency proofs + `make verify`
+**Status:** starting
 **Blocked:** none
 
 ## Environment resolved (2026-09-02)
@@ -14,7 +14,16 @@ before being written into `pyproject.toml` — including `ortools` (CP-SAT), `sc
 algorithmic fallbacks were needed. See ADR 0003.
 
 ## Green milestones
-_(none yet)_
+- **M0** — repo, tooling, task runner, Docker, `.env.example`, ADRs 0001-0003.
+  DoD: `python tasks.py test` exits 0 on a clean tree; the server boots with every
+  credential env var scrubbed and `/health` returns `200 {"credentials_required": false}`.
+- **M1** — `core/money`, `core/clock`, `core/ids` + property tests.
+  DoD: **104 tests green, `mypy --strict` clean on `core/`+`recon/`, `ruff` clean.**
+  The no-float proof runs in both directions: `scripts/money_lint.py` walks the AST of
+  every money-path module and rejects float literals, `float()` calls and non-Decimal
+  division (with a reason-mandatory escape hatch), and a test feeds the lint a
+  deliberately broken module to prove it is not vacuous; Hypothesis then generates
+  arbitrary floats against every constructor and operator.
 
 ## Notes
 - `tasks.py` is the single source of truth for build targets; `Makefile` and `make.cmd`
@@ -23,5 +32,5 @@ _(none yet)_
   `docs/limitations.md` rather than claimed as working.
 
 ## Next
-M1 — `core/money`, `core/clock`, `core/ids` + property tests proving no float ever
-enters a money path.
+M2 — RFC-6962-style Merkle transparency log: inclusion proofs, consistency proofs,
+Ed25519-signed tree head, and `make verify` locating the exact tampered index.

@@ -1,12 +1,21 @@
 {
-  "milestone": "M0",
-  "status": "in_progress",
+  "milestone": "M2",
+  "status": "starting",
   "attempts": 0,
-  "green": [],
+  "green": [
+    "M0",
+    "M1"
+  ],
   "blocked": null,
   "notes": [
     "env: python 3.14.3, node 24.14, git 2.50; no make, no uv, no docker on this machine",
-    "all pinned deps verified installable with cp314 wheels incl. ortools, scipy, cryptography"
+    "all pinned deps verified installable with cp314 wheels incl. ortools, scipy, cryptography",
+    "M1: money-lint (AST) + hypothesis prove no float can enter a money path, both directions"
   ],
-  "metrics_snapshot": null
+  "metrics_snapshot": {
+    "tests": 104,
+    "mypy_strict": "clean",
+    "ruff": "clean",
+    "money_lint": "pass"
+  }
 }

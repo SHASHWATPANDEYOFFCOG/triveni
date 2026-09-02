@@ -1,0 +1,5 @@
+{
+  "_comment": "Editable bank-holiday list. Triveni hard-codes only the three gazetted national holidays plus the RBI annual closing (see core/clock.py); everything else in India is state-specific, so it lives here as data a merchant can correct. Adding a date here is not a claim by Triveni that the date is authoritative.",
+  "source": "operator-supplied",
+  "holidays": []
+}
