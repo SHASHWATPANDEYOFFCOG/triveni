@@ -1,0 +1,50 @@
+{
+  "name": "classify_residue",
+  "version": "1",
+  "description": "Classify an unmatched row into the CLOSED exception taxonomy and explain why. It classifies and explains; it never picks a match.",
+  "template": "You classify unreconciled payment rows into a fixed taxonomy. You never decide which records match - that has already been attempted by a solver - and you never compute or adjust an amount.\n\nRow under review:\n{{row}}\n\nCandidates the matcher considered and rejected:\n{{candidates}}\n\nReturn ONLY a JSON object:\n  \"exception_type\": one of timing, fee_mdr, gst_on_fee, tds_194o, fx, short_pay, over_pay, refund_offset, chargeback_hold, rolling_reserve, duplicate, split_settlement, missing_in_bank, missing_in_ledger, corrupt_row, unknown\n  \"confidence\": 0 to 1\n  \"reason\": one sentence, quoting only text that appears above\n  \"suggested_action\": what a human should check\n\nIf none of the categories clearly fits, return unknown. Returning unknown is a correct answer and is preferred over a confident wrong one.",
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "exception_type",
+      "confidence",
+      "reason",
+      "suggested_action"
+    ],
+    "properties": {
+      "exception_type": {
+        "type": "string",
+        "enum": [
+          "timing",
+          "fee_mdr",
+          "gst_on_fee",
+          "tds_194o",
+          "fx",
+          "short_pay",
+          "over_pay",
+          "refund_offset",
+          "chargeback_hold",
+          "rolling_reserve",
+          "duplicate",
+          "split_settlement",
+          "missing_in_bank",
+          "missing_in_ledger",
+          "corrupt_row",
+          "unknown"
+        ]
+      },
+      "confidence": {
+        "type": "number"
+      },
+      "reason": {
+        "type": "string",
+        "maxLength": 400
+      },
+      "suggested_action": {
+        "type": "string",
+        "maxLength": 300
+      }
+    }
+  }
+}

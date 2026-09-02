@@ -224,7 +224,7 @@ def test_the_decomposition_never_calls_a_model() -> None:
 # --------------------------------------------------------------------------- #
 def test_stage_five_runs_and_reports(result) -> None:
     stages = [s.stage for s in result.stages]
-    assert stages == ["stage0", "stage1", "stage2", "stage3", "stage4", "stage5"]
+    assert stages == ["stage0", "stage1", "stage2", "stage3", "stage4", "stage5", "stage6"]
     detail = next(s for s in result.stages if s.stage == "stage5").detail
     assert "balance to Rs 0" in detail
     assert "R^2" in detail or "not enough" in detail

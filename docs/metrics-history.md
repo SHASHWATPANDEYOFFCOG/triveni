@@ -23,3 +23,4 @@ number got worse. Rule A.6: if a metric regresses after a change, it is reported
 | seed | M8 | 535 | 94.95% | 100.00% | 34.75% | ₹18,994.55 | 5.00% | digest 2080b26d |
 | seed | M9 | 535 | 95.70% | 91.69% | 81.53% | ₹0.00 | 5.00% | digest 2080b26d |
 | seed | M10 | 535 | 95.51% | 97.73% | 82.63% | ₹2,021.31 | 5.00% | digest 2080b26d |
+| seed | M11 | 536 | 95.34% | 98.06% | 82.90% | ₹2,677.10 | 4.76% | digest c5653fbf |

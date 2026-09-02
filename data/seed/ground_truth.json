@@ -2156,6 +2156,25 @@
       "net_expected_paise": 95615,
       "settlement_date": "2026-03-12",
       "settlement_ids": []
+    },
+    {
+      "anomalies": [
+        "unknown"
+      ],
+      "bank_ids": [
+        "TR00342357B7"
+      ],
+      "components": {
+        "unknown": 65579
+      },
+      "gateway_ids": [],
+      "gross_paise": 0,
+      "group_id": "injection-0",
+      "ledger_ids": [],
+      "links": [],
+      "net_expected_paise": 65579,
+      "settlement_date": "2026-03-06",
+      "settlement_ids": []
     }
   ],
   "spec": {

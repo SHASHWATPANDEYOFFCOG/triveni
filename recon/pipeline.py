@@ -37,6 +37,8 @@ from typing import Any
 from core.clock import INDIAN_BANK_CALENDAR, Clock, FrozenClock, SettlementCalendar
 from core.errors import InfeasibleAssignment
 from core.ids import IdKind, make_id
+from core.llm import InjectionFinding, LLMGateway, scan_for_injection
+from core.llm import gateway as default_gateway
 from core.money import Money, format_inr
 from ingest.adapters.csv_bank import read_bank_statement, read_ledger
 from ingest.adapters.fixtures import read_gateway
@@ -55,6 +57,7 @@ from recon.assign import (
     check_no_double_use,
 )
 from recon.blocking import CandidateSet, generate_candidates, relevant_rows
+from recon.escalate import EscalationReport, escalate
 from recon.exceptions import (
     EvidenceBundle,
     EvidenceItem,
@@ -205,6 +208,17 @@ class ReconResult:
 
     pair_scores: dict[tuple[str, str], PairScore] = field(default_factory=dict)
     """Per-pair match weight with its field breakdown, for the triage evidence panel."""
+
+    injection_findings: dict[str, list[InjectionFinding]] = field(default_factory=dict)
+    """Rows whose free text tries to issue instructions, found at ingest.
+
+    Scanned where untrusted data *enters*, not only where it would reach a model.
+    Defence in depth, and it also means the denial is visible even for rows a later
+    stage resolves without ever consulting a model.
+    """
+
+    escalation: EscalationReport | None = None
+    """What the residue stage did, including how many rows reached a model at all."""
 
     waterfalls: dict[str, Waterfall] = field(default_factory=dict)
     """Per-settlement decomposition, keyed by bank row id. Loop 2's output."""
@@ -1258,6 +1272,59 @@ def stage5_decompose(result: ReconResult, config: ReconConfig) -> tuple[list[Mat
     return [], detail
 
 
+
+# --------------------------------------------------------------------------- #
+# Stage 6 - the residue
+# --------------------------------------------------------------------------- #
+def stage6_escalate(
+    result: ReconResult, clock: Clock, llm: LLMGateway
+) -> tuple[list[MatchGroup], str]:
+    """Classify and explain whatever the solvers could not resolve.
+
+    The only stage that consults a model, and it consults one about *language*: which
+    of sixteen categories this row belongs to, and why, quoting text it was shown. It
+    produces no matches - a model that could create a match would be a model that
+    could be talked into one.
+    """
+    consumed = result.consumed_ids()
+    already_reported = {
+        source_id for exception in result.exceptions for source_id in exception.source_ids
+    }
+    residue = [
+        row
+        for row in sorted(result.rows.values(), key=lambda r: r.txn_id)
+        if row.txn_id not in consumed
+        and row.txn_id not in result.suppressed_ids
+        and row.txn_id not in already_reported
+        and row.txn_id not in result.injection_findings
+    ]
+    if not residue:
+        return [], "no residue rows"
+
+    # The candidates the matcher rejected, so a human opening the row sees what was
+    # already considered rather than starting from nothing.
+    candidates: dict[str, list[CanonicalTxn]] = defaultdict(list)
+    if result.candidates is not None:
+        for left, right in sorted(result.candidates.pairs):
+            for row_id, other in ((left, right), (right, left)):
+                if row_id in {r.txn_id for r in residue} and other in result.rows:
+                    candidates[row_id].append(result.rows[other])
+
+    report = escalate(
+        residue,
+        {k: tuple(v) for k, v in candidates.items()},
+        gateway=llm,
+        as_of=clock.today(),
+    )
+    result.escalation = report
+    result.exceptions.extend(e.exception for e in report.escalations)
+
+    return [], (
+        f"{report.render()}; "
+        f"{llm.meter.calls} model call(s), {llm.meter.denials} denied for injection"
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Orchestration
 # --------------------------------------------------------------------------- #
@@ -1308,10 +1375,12 @@ def reconcile(
     directory: Path = DEFAULT_DATA,
     config: ReconConfig | None = None,
     clock: Clock | None = None,
+    llm: LLMGateway | None = None,
 ) -> ReconResult:
     """Close the books for whatever is in ``directory``."""
     config = config or ReconConfig()
     clock = clock or FrozenClock.at("2026-04-01 09:00")
+    llm = llm if llm is not None else default_gateway()
     result = ReconResult()
 
     # --- ingest ------------------------------------------------------------
@@ -1335,6 +1404,51 @@ def reconcile(
         row.txn_id for row in canonical_rows if row.source is SourceKind.BANK and row.raw_narration.strip()
     ]
     deterministic = sum(1 for txn_id in narrated_ids if parses[txn_id].complete)
+    # --- prompt-injection scan, at the boundary where untrusted text enters ---
+    # A bank narration is attacker-controlled: anyone who can make a payment can put
+    # text in one. Scanning here rather than only at the model boundary means the
+    # denial is recorded even when a later stage resolves the row without a model -
+    # and it means a row carrying an attack is flagged for a human regardless.
+    for row in canonical_rows:
+        findings = scan_for_injection(row.raw_narration, field="narration")
+        if not findings:
+            continue
+        result.injection_findings[row.txn_id] = findings
+        result.exceptions.append(
+            make_exception(
+                exception_type=ExceptionType.UNKNOWN,
+                reason=(
+                    f"the narration on {row.external_id} tries to issue instructions "
+                    f"({', '.join(sorted({f.pattern for f in findings}))}); denied, "
+                    f"logged, and never sent to a model"
+                ),
+                amount=row.amount,
+                source_ids=(row.txn_id,),
+                as_of=row.occurred_on,
+                evidence=EvidenceBundle(
+                    considered=(row.txn_id,),
+                    stage="stage0.injection_scan",
+                    abstained_because=(
+                        "source text attempted prompt injection; it is data, not a "
+                        "request, and Triveni treats it as such"
+                    ),
+                    items=tuple(
+                        EvidenceItem(
+                            kind="source_span",
+                            label=finding.pattern,
+                            detail=finding.excerpt,
+                            source_id=row.txn_id,
+                        )
+                        for finding in findings
+                    ),
+                ),
+                suggested_action=(
+                    "Treat this credit as unidentified and confirm it by hand. The "
+                    "narration is hostile input, not a description."
+                ),
+            )
+        )
+
     _add_stage(
         result,
         "stage0",
@@ -1343,7 +1457,8 @@ def reconcile(
         started,
         detail=(
             f"{len(canonical_rows)} rows normalised; {deterministic}/{len(narrated_ids)} "
-            f"bank narrations parsed without a model; {len(result.corrupt)} corrupt row(s)"
+            f"bank narrations parsed without a model; {len(result.corrupt)} corrupt row(s); "
+            f"{len(result.injection_findings)} prompt-injection attempt(s) denied"
         ),
     )
 
@@ -1439,6 +1554,11 @@ def reconcile(
     started = time.perf_counter()
     _none, detail = stage5_decompose(result, config)
     _add_stage(result, "stage5", "settlement decomposition", [], started, detail)
+
+    # --- stage 6: the residue --------------------------------------------
+    started = time.perf_counter()
+    _none, detail = stage6_escalate(result, clock, llm)
+    _add_stage(result, "stage6", "residue (the only model call)", [], started, detail)
 
     offenders = result.check_no_double_spend()
     if offenders:

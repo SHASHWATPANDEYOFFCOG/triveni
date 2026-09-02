@@ -1,5 +1,5 @@
 {
-  "milestone": "M11",
+  "milestone": "M12",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -13,7 +13,8 @@
     "M7",
     "M8",
     "M9",
-    "M10"
+    "M10",
+    "M11"
   ],
   "blocked": null,
   "notes": [
@@ -31,28 +32,24 @@
     "M9: five solver errors that each satisfied their constraints - inverted tolerance, telescoping objective, calendar missing from the objective, per-row instead of per-relation groups, wall-clock budget breaking determinism.",
     "M9 finding: precision FALLS as the solver budget rises (0.9169 at 0.5 units, 0.8329 at 2.0). The objective is a proxy; optimising it harder is not free.",
     "M10: fitting on ALL settlements gave card_debit 2524 bps vs contracted 90; restricting to fee-consistent settlements gave R^2 0.919. Thin-volume methods are reported as unidentifiable rather than fitted.",
-    "M10: solver optimality is not correctness - Stage 4 claiming 0.95 on proven-optimal netting dropped auto-post precision to 0.977. Netting is a proposal until M12 calibrates it."
+    "M10: solver optimality is not correctness - Stage 4 claiming 0.95 on proven-optimal netting dropped auto-post precision to 0.977. Netting is a proposal until M12 calibrates it.",
+    "M11: one LLM gateway; injection scanned at INGEST not just the model boundary, else the denial was invisible when a later stage resolved the row.",
+    "M11: cassettes are synthetic fixtures, labelled as such, generated through the real call path and from the model's own inputs only - never ground truth."
   ],
   "metrics_snapshot": {
     "tests": 607,
+    "redteam": "13/13",
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
-    "M10": {
-      "match_rate": "95.51%",
-      "precision": "97.73%",
-      "recall": "82.63%",
-      "f1": "0.895",
-      "auto_post_precision": "100.00%",
-      "auto_post_coverage": "41.10%",
-      "waterfalls_balanced": "16/16",
-      "fit_r2": "0.919",
-      "unexplained": "Rs 2,021.31",
-      "full_dataset": {
-        "precision": "0.9538",
-        "recall": "0.8488",
-        "rows": 5481
-      }
+    "M11": {
+      "match_rate": "95.34%",
+      "precision": "98.06%",
+      "recall": "82.90%",
+      "llm_call_rate": "4.76%",
+      "llm_calls_absolute": 1,
+      "unexplained": "Rs 2,677.10",
+      "offline": "replay from cassettes, no key"
     }
   }
 }
