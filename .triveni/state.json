@@ -1,5 +1,5 @@
 {
-  "milestone": "M13",
+  "milestone": "M14",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -15,7 +15,8 @@
     "M9",
     "M10",
     "M11",
-    "M12"
+    "M12",
+    "M13"
   ],
   "blocked": null,
   "notes": [
@@ -37,23 +38,21 @@
     "M11: one LLM gateway; injection scanned at INGEST not just the model boundary, else the denial was invisible when a later stage resolved the row.",
     "M11: cassettes are synthetic fixtures, labelled as such, generated through the real call path and from the model's own inputs only - never ground truth.",
     "M12: alpha=2% breaches on a single split but holds in expectation over 40 splits - both reported. Breach rate 32.5% at alpha=2%.",
-    "M12: an id-space mismatch made calibration silently fall back to the hard-coded 0.90 it existed to replace, while printing a plausible threshold."
+    "M12: an id-space mismatch made calibration silently fall back to the hard-coded 0.90 it existed to replace, while printing a plausible threshold.",
+    "M13: Razorpay boundary enforced by literal allowlist + import-time assertion + READ_ONLY; offline rail goes through the same gate so it is exercised on the path everyone runs.",
+    "M13: forecast_cash reports its own absence rather than fabricating a series until M14 lands."
   ],
   "metrics_snapshot": {
-    "tests": 626,
+    "tests": 672,
     "redteam": "13/13",
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
-    "M12": {
-      "conformal_threshold": "0.9548",
-      "nominal_bound": "1.00%",
-      "realised_error_heldout": "0.00%",
-      "auto_post_coverage": "72.82%",
-      "auto_post_precision": "100.00%",
-      "precision": "98.06%",
-      "recall": "82.90%",
-      "saved_vs_manual": "Rs 5,230"
+    "api_routes": 11,
+    "mcp_tools": 6,
+    "razorpay": {
+      "read_tools": 10,
+      "write_tools_refused": 11
     }
   }
 }
