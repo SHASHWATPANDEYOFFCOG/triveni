@@ -1,5 +1,5 @@
 {
-  "milestone": "M12",
+  "milestone": "M13",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -14,7 +14,8 @@
     "M8",
     "M9",
     "M10",
-    "M11"
+    "M11",
+    "M12"
   ],
   "blocked": null,
   "notes": [
@@ -34,22 +35,25 @@
     "M10: fitting on ALL settlements gave card_debit 2524 bps vs contracted 90; restricting to fee-consistent settlements gave R^2 0.919. Thin-volume methods are reported as unidentifiable rather than fitted.",
     "M10: solver optimality is not correctness - Stage 4 claiming 0.95 on proven-optimal netting dropped auto-post precision to 0.977. Netting is a proposal until M12 calibrates it.",
     "M11: one LLM gateway; injection scanned at INGEST not just the model boundary, else the denial was invisible when a later stage resolved the row.",
-    "M11: cassettes are synthetic fixtures, labelled as such, generated through the real call path and from the model's own inputs only - never ground truth."
+    "M11: cassettes are synthetic fixtures, labelled as such, generated through the real call path and from the model's own inputs only - never ground truth.",
+    "M12: alpha=2% breaches on a single split but holds in expectation over 40 splits - both reported. Breach rate 32.5% at alpha=2%.",
+    "M12: an id-space mismatch made calibration silently fall back to the hard-coded 0.90 it existed to replace, while printing a plausible threshold."
   ],
   "metrics_snapshot": {
-    "tests": 607,
+    "tests": 626,
     "redteam": "13/13",
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
-    "M11": {
-      "match_rate": "95.34%",
+    "M12": {
+      "conformal_threshold": "0.9548",
+      "nominal_bound": "1.00%",
+      "realised_error_heldout": "0.00%",
+      "auto_post_coverage": "72.82%",
+      "auto_post_precision": "100.00%",
       "precision": "98.06%",
       "recall": "82.90%",
-      "llm_call_rate": "4.76%",
-      "llm_calls_absolute": 1,
-      "unexplained": "Rs 2,677.10",
-      "offline": "replay from cassettes, no key"
+      "saved_vs_manual": "Rs 5,230"
     }
   }
 }

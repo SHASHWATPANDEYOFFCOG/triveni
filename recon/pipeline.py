@@ -1007,6 +1007,43 @@ def stage4_global_assignment(
 
         gross = sum(gross_by_id[m] for m in attribution.member_ids)
         explained = gross - credit.amount.paise
+
+        # A continuous, evidence-derived confidence rather than a constant.
+        #
+        # A constant made the alpha slider meaningless: with every claim scoring
+        # either 1.00 or 0.85, the conformal threshold had two places it could sit and
+        # the cost curve was flat across the whole range. More importantly a constant
+        # is *wrong* - a settlement whose payments all landed on their expected date
+        # and whose withheld amount is exactly what the fee card predicts is a much
+        # better claim than one carrying an unexplained 12%, and saying so is what
+        # lets calibration separate them.
+        #
+        # Two signals, both observable at this stage and neither of them the label:
+        # how many members landed on the date the calendar predicted, and how close
+        # the withheld amount is to the fees the rate card expects.
+        on_time = sum(
+            1
+            for member in attribution.member_ids
+            if config.calendar.settlement_date(
+                result.rows[member].occurred_at, cycle_days=config.settlement_cycle_days
+            )
+            == (credit.settled_on or credit.occurred_on)
+        )
+        date_fit = Decimal(on_time) / Decimal(len(attribution.member_ids))
+
+        expected_withheld = sum(
+            gross_by_id[m] - amounts[m] for m in attribution.member_ids
+        )
+        slack = max(int(gross * Decimal(config.max_deduction_share)), 1)
+        drift = abs(explained - expected_withheld)
+        residual_fit = max(Decimal(0), Decimal(1) - Decimal(min(drift, slack)) / Decimal(slack))
+
+        confidence = (
+            Decimal("0.50")
+            + Decimal("0.30") * date_fit
+            + Decimal("0.17") * residual_fit
+            + (Decimal("0.02") if netting.optimal else Decimal(0))
+        ).quantize(Decimal("0.0001"))
         matches.append(
             MatchGroup(
                 match_id=make_id(
@@ -1018,19 +1055,7 @@ def stage4_global_assignment(
                 ledger_ids=tuple(sorted(ledger_ids)),
                 links=(),
                 amount=credit.amount,
-                # Deliberately below the auto-post threshold, and NOT keyed to whether
-                # the solver proved optimality.
-                #
-                # Optimality means "best under my objective", not "correct", and
-                # conflating the two let settlement attributions post unsupervised at
-                # 0.95 while measuring 0.977 precision - so 2.3% of wrong attributions
-                # were reaching the books because a solver said it had finished.
-                #
-                # Netting attributions are proposals until there is a calibrated basis
-                # for trusting them, which is exactly what M12's conformal threshold
-                # provides. Until then they go to a human, and auto-post precision
-                # stays at 1.000.
-                confidence=Decimal("0.85"),
+                confidence=confidence,
                 reason=(
                     f"{len(attribution.member_ids)} payment(s) totalling "
                     f"{format_inr(Money(gross))} net to the "
@@ -1059,6 +1084,16 @@ def stage4_global_assignment(
                             label="withheld (decomposed at M10)",
                             detail=format_inr(Money(explained)),
                             weight=f"{Decimal(explained) / Decimal(max(gross, 1)):.4%} of gross",
+                        ),
+                        EvidenceItem(
+                            kind="field_weight",
+                            label="confidence",
+                            detail=(
+                                f"{on_time}/{len(attribution.member_ids)} payments landed "
+                                f"on the date the calendar predicted; withheld amount is "
+                                f"{format_inr(Money(drift))} from what the rate card expects"
+                            ),
+                            weight=str(confidence),
                         ),
                         EvidenceItem(
                             kind="candidate",

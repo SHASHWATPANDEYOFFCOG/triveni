@@ -10,6 +10,7 @@ been convenient and would have made the guarantee unenforceable.
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from pathlib import Path
 
 from core.costmodel import CostModel, OutcomeMix, price
@@ -40,7 +41,18 @@ def cross_source_pairs(
     return pairs
 
 
-def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> MetricsReport:
+def evaluate_pipeline(
+    dataset: str | None = None,
+    seed: int = 20260101,
+    alpha: Decimal = Decimal("0.01"),
+) -> MetricsReport:
+    """Grade the pipeline, with the auto-post threshold conformally calibrated.
+
+    ``alpha`` defaults to 1%, which `scripts/calibrate.py` shows is inside the
+    zero-error region on this dataset: it admits 70.3% of claims at a held-out error
+    of 0.00% and costs Rs 1,800, against Rs 7,600 for the 100%-coverage operating
+    point above the step at alpha=1.6%. Coverage is a means; cost is the objective.
+    """
     """Run the pipeline and grade it, pairwise.
 
     Pairwise precision and recall is the standard record-linkage measure and the only
@@ -85,9 +97,38 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
     # is found weeks later. Stage 4's netting proposals are confident enough to be
     # useful and not confident enough to post unsupervised, which is a legitimate
     # answer - but only if it is reported as one.
+    # The auto-post threshold is CALIBRATED, not chosen. Until M12 it was a
+    # hard-coded 0.90 - a number that meant nothing, transferred nowhere, and could
+    # not say by how much it was wrong. It is now the conformal threshold at the
+    # configured alpha, fitted on a held-out calibration slice, and the guarantee it
+    # carries is reported alongside.
+    from core.conformal import Observation, calibrate, evaluate_on, split
     from core.policy import PolicyConfig
 
-    post_threshold = PolicyConfig().min_confidence
+    # Claims come out of the pipeline in internal txn ids; the truth speaks external
+    # ids. Comparing them directly marked every claim wrong, no threshold could clear
+    # the budget, the calibration reported itself unavailable, and the whole thing
+    # silently fell back to the hard-coded 0.90 it was meant to replace - looking
+    # exactly like a working feature.
+    labelled: list[Observation] = []
+    for match in result.matches:
+        for a, b in sorted(match.claimed_pairs()):
+            left, right = external(a), external(b)
+            pair = (left, right) if left < right else (right, left)
+            labelled.append(
+                Observation(
+                    identifier=f"{pair[0]}|{pair[1]}",
+                    confidence=match.confidence,
+                    correct=pair in true_pairs,
+                    amount_paise=match.amount.paise,
+                )
+            )
+    calibration_set, holdout = split(sorted(labelled, key=lambda o: o.identifier))
+    calibration = calibrate(calibration_set, alpha)
+    holdout_row = evaluate_on(calibration, holdout)
+    post_threshold = (
+        calibration.threshold if calibration.available else PolicyConfig().min_confidence
+    )
     auto_pairs: set[tuple[str, str]] = set()
     for match in result.matches:
         if match.confidence < post_threshold:
@@ -128,9 +169,37 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
         auto_tp,
         max(auto_tp + auto_fp, 1),
         description=(
-            f"precision restricted to matches confident enough to post unsupervised "
-            f"(confidence >= {post_threshold}); the rest go to human triage"
+            f"precision over every claim at or above the calibrated threshold "
+            f"({post_threshold}) - IN-SAMPLE, since it includes the calibration slice "
+            f"the threshold was fitted on. conformal_realised_error is the held-out "
+            f"number and is the one the guarantee is about"
         ),
+    )
+    registry.scalar(
+        "conformal_threshold",
+        post_threshold,
+        description=(
+            f"confidence required to post unsupervised, calibrated at alpha={alpha} "
+            f"on {calibration.n_calibration} held-out claim(s)"
+        ),
+        higher_is_better=False,
+    )
+    registry.scalar(
+        "conformal_realised_error",
+        holdout_row.realised,
+        unit="%",
+        description=(
+            "error among auto-posted claims on the HELD-OUT split - the number the "
+            "guarantee is about, reported beside the nominal bound"
+        ),
+        higher_is_better=False,
+    )
+    registry.scalar(
+        "conformal_nominal_bound",
+        alpha,
+        unit="%",
+        description="the promise; conformal_realised_error is what happened",
+        higher_is_better=False,
     )
     registry.rate(
         "auto_post_coverage",
@@ -210,11 +279,16 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
         OutcomeMix(
             rows=total_rows,
             auto_posted=len(auto_pairs),
-            true_matches=auto_tp,
-            false_matches=auto_fp,
+            true_matches=holdout_row.posted - holdout_row.wrong,
+            false_matches=holdout_row.wrong,
             false_non_matches=fn,
             needs_review=reviewed + len(result.exceptions),
-            exposed_by_false_matches=sum_money(match.amount for match in result.matches[:auto_fp]),
+            # Charged at the HELD-OUT error rate rather than the in-sample one. The
+            # threshold was fitted on the calibration slice, so counting its errors
+            # would be pricing the run on the data it was tuned against.
+            exposed_by_false_matches=sum_money(
+                match.amount for match in result.matches[: holdout_row.wrong]
+            ),
         ),
         model,
     )
@@ -237,6 +311,8 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
             "problem for the solver. That is why precision is 1.0 and recall is not.",
             "Wall-clock is excluded by design so this file stays byte-identical across "
             "runs; see `make bench` for throughput.",
+            calibration.guarantee,
+            calibration.assumption_report(),
             f"config digest: {content_hash(ReconConfig().canonical())[:16]}",
         ),
         code_digest=source_digest(),
