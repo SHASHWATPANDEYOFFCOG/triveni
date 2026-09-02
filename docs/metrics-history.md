@@ -20,3 +20,4 @@ number got worse. Rule A.6: if a metric regresses after a change, it is reported
 | _(first row lands at M6, the first milestone that touches the pipeline)_ | | | | | | | | |
 | seed | M6 | 535 | 85.23% | 100.00% | 5.99% | ₹4,38,292.38 | 5.00% | digest db5e062c |
 | seed | M7 | 535 | 90.84% | 100.00% | 33.24% | ₹33,553.07 | 5.00% | digest 2080b26d |
+| seed | M8 | 535 | 94.95% | 100.00% | 34.75% | ₹18,994.55 | 5.00% | digest 2080b26d |

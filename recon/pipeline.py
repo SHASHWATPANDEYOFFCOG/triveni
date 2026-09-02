@@ -48,6 +48,7 @@ from recon.exceptions import (
     ReconException,
     make_exception,
 )
+from recon.fellegi_sunter import FellegiSunterModel, PairScore, score_candidates
 from recon.normalize import (
     NarrationParse,
     name_key,
@@ -127,7 +128,25 @@ class ReconResult:
     corrupt: list[CorruptRecord] = field(default_factory=list)
     narration_parses: dict[str, NarrationParse] = field(default_factory=dict)
     candidates: CandidateSet | None = None
-    """What Stage 2 proposed. Stage 3 scores exactly these pairs and no others."""
+    """Every pair Stage 2 proposed. Stage 3 fits its model on all of these."""
+
+    linkage_model: FellegiSunterModel | None = None
+    """The EM-fitted Fellegi-Sunter model. Its weight table is a UI artefact."""
+
+    pair_scores: dict[tuple[str, str], PairScore] = field(default_factory=dict)
+    """Per-pair match weight with its field breakdown, for the triage evidence panel."""
+
+    suppressed_ids: set[str] = field(default_factory=set)
+    """Duplicate copies held out of matching. They are reported, never discarded."""
+
+    open_pairs: set[tuple[str, str]] = field(default_factory=set)
+    """The subset whose rows Stage 1 did not already consume.
+
+    A *snapshot*, taken at Stage 2, of what was still matchable at that moment. It is
+    deliberately not updated as later stages consume rows, because its purpose is to
+    record what each stage was handed - which is what makes the stage ladder in the UI
+    an attribution rather than a running total.
+    """
 
     # --- invariants --------------------------------------------------------
     def consumed_ids(self) -> set[str]:
@@ -186,11 +205,21 @@ class ReconConfig:
     amount_tolerance: Money = field(default_factory=Money.zero)
     """Stage 1 is exact by design. Tolerance belongs to the subset solver at M9."""
 
+    link_upper_bits: float = 6.0
+    """Fellegi-Sunter's upper threshold: at or above this, a pair may be linked."""
+
+    link_lower_bits: float = 0.0
+    """And the lower one: below this a pair is rejected outright. Between the two is
+    the clerical-review region the method is named for, and it becomes a typed
+    exception with its full weight breakdown rather than a coin flip."""
+
     def canonical(self) -> dict[str, Any]:
         return {
             "settlement_cycle_days": self.settlement_cycle_days,
             "date_slack_days": self.date_slack_days,
             "amount_tolerance_paise": self.amount_tolerance.paise,
+            "link_upper_bits": str(self.link_upper_bits),
+            "link_lower_bits": str(self.link_lower_bits),
         }
 
 
@@ -232,6 +261,95 @@ def canonicalise(rows: list[CanonicalTxn]) -> tuple[list[CanonicalTxn], dict[str
     return out, parses
 
 
+
+# --------------------------------------------------------------------------- #
+# Stage 1a - deduplication
+# --------------------------------------------------------------------------- #
+def dedupe(result: ReconResult, clock: Clock) -> tuple[set[str], str]:
+    """Find rows that are the same event ingested twice, and set the copies aside.
+
+    A retried webhook or a re-uploaded statement puts the identical payment into the
+    batch twice. Left alone this is worse than a missing row, because *both* copies
+    look matchable: on the seed, the duplicate payments were being linked to the
+    invoices their originals should have owned, producing five confidently-wrong
+    matches at 47.9 bits that no threshold could exclude - they were not marginal, the
+    model was certain and the model was right about the evidence. The evidence was
+    genuinely identical, because the rows are.
+
+    Two rows duplicate each other when they agree on source, reference, amount and
+    timestamp exactly. That is deliberately strict: a near-duplicate is a *finding*
+    for a human, not something to silently discard. The survivor is the
+    lexicographically first external id, so the choice is deterministic and not
+    dependent on ingest order, and every copy set aside becomes a typed `duplicate`
+    exception naming the row it duplicates.
+
+    Returns the ids to exclude from matching, plus a one-line report.
+    """
+    groups: dict[tuple[str, str, int, str], list[CanonicalTxn]] = defaultdict(list)
+    for row in sorted(result.rows.values(), key=lambda r: r.txn_id):
+        if row.kind not in {TxnKind.PAYMENT, TxnKind.REFUND, TxnKind.SETTLEMENT}:
+            continue
+        key = (
+            row.source.value,
+            row.reference,
+            row.amount.paise,
+            row.occurred_at.isoformat(),
+        )
+        groups[key].append(row)
+
+    suppressed: set[str] = set()
+    for key in sorted(groups):
+        members = sorted(groups[key], key=lambda r: r.external_id)
+        if len(members) < 2:
+            continue
+        original, *copies = members
+        for copy in copies:
+            suppressed.add(copy.txn_id)
+            result.exceptions.append(
+                make_exception(
+                    exception_type=ExceptionType.DUPLICATE,
+                    reason=(
+                        f"{copy.external_id} is byte-identical to {original.external_id} "
+                        f"on reference, amount ({format_inr(copy.amount)}) and timestamp; "
+                        f"kept {original.external_id} and set this copy aside"
+                    ),
+                    amount=copy.amount,
+                    source_ids=(copy.txn_id, original.txn_id),
+                    as_of=clock.today(),
+                    evidence=EvidenceBundle(
+                        considered=(original.txn_id, copy.txn_id),
+                        stage="stage1.dedupe",
+                        items=(
+                            EvidenceItem(
+                                kind="field_weight",
+                                label="reference",
+                                detail=copy.reference or "(none)",
+                                weight="identical",
+                            ),
+                            EvidenceItem(
+                                kind="arithmetic",
+                                label="amount",
+                                detail=format_inr(copy.amount),
+                                weight="identical",
+                            ),
+                            EvidenceItem(
+                                kind="arithmetic",
+                                label="timestamp",
+                                detail=copy.occurred_at.isoformat(),
+                                weight="identical",
+                            ),
+                        ),
+                    ),
+                    suggested_action=(
+                        "Confirm the upstream feed is not re-delivering, then discard "
+                        "the copy. No money is affected either way."
+                    ),
+                )
+            )
+
+    return suppressed, f"{len(suppressed)} duplicate row(s) set aside"
+
+
 # --------------------------------------------------------------------------- #
 # Stage 1 - deterministic keys
 # --------------------------------------------------------------------------- #
@@ -269,7 +387,7 @@ def stage1_deterministic(
 
     by_source: dict[SourceKind, list[CanonicalTxn]] = defaultdict(list)
     for row in result.rows.values():
-        if row.txn_id not in consumed:
+        if row.txn_id not in consumed and row.txn_id not in result.suppressed_ids:
             by_source[row.source].append(row)
 
     # --- key 1: UTR agreement between the gateway's settlement and the bank ---
@@ -417,6 +535,126 @@ def stage1_deterministic(
     return matches, detail
 
 
+
+# --------------------------------------------------------------------------- #
+# Stage 3 - probabilistic linkage
+# --------------------------------------------------------------------------- #
+def stage3_linkage(result: ReconResult, config: ReconConfig) -> tuple[list[MatchGroup], str]:
+    """Link the pairs Fellegi-Sunter is confident about, and only those.
+
+    Two thresholds, which is the whole point of the F-S formulation: at or above the
+    upper one a pair may be linked, below the lower one it is rejected, and between
+    them lies the *clerical review* region a human decides. Collapsing that to a
+    single threshold throws away the model's most useful output - its admission that
+    it does not know.
+
+    Linking is mutual-best and strictly 1:1, deliberately conservative. A globally
+    optimal assignment is Stage 4's job, and greedily consuming rows here would take
+    them away from the subset solver that needs them for many-to-one netting.
+    """
+    if result.linkage_model is None or not result.pair_scores:
+        return [], "no candidate pairs to score"
+
+    open_scores = [
+        score for pair, score in sorted(result.pair_scores.items()) if pair in result.open_pairs
+    ]
+    accepted = [s for s in open_scores if s.total >= config.link_upper_bits]
+    review = [s for s in open_scores if config.link_lower_bits <= s.total < config.link_upper_bits]
+
+    best: dict[str, PairScore] = {}
+    for score in sorted(accepted, key=lambda s: (-s.total, s.pair)):
+        for row_id in score.pair:
+            if row_id not in best or score.total > best[row_id].total:
+                best[row_id] = score
+
+    matches: list[MatchGroup] = []
+    used: set[str] = set()
+    for score in sorted(accepted, key=lambda s: (-s.total, s.pair)):
+        left_id, right_id = score.pair
+        if left_id in used or right_id in used:
+            continue
+        if best[left_id] is not score or best[right_id] is not score:
+            continue
+        left, right = result.rows[left_id], result.rows[right_id]
+        used |= {left_id, right_id}
+
+        by_source: dict[SourceKind, list[str]] = defaultdict(list)
+        for row in (left, right):
+            by_source[row.source].append(row.txn_id)
+
+        top = sorted(score.weights, key=lambda w: -abs(w.weight))[:3]
+        matches.append(
+            MatchGroup(
+                match_id=make_id(IdKind.MATCH, "stage3", left_id, right_id),
+                stage="stage3.fellegi_sunter",
+                gateway_ids=tuple(by_source.get(SourceKind.GATEWAY, ())),
+                bank_ids=tuple(by_source.get(SourceKind.BANK, ())),
+                ledger_ids=tuple(by_source.get(SourceKind.LEDGER, ())),
+                amount=left.amount if left.amount.paise >= right.amount.paise else right.amount,
+                confidence=score.as_confidence(),
+                reason=(
+                    f"match weight {score.total:+.1f} bits: "
+                    + "; ".join(f"{w.description} ({w.weight:+.1f})" for w in top)
+                ),
+                evidence=EvidenceBundle(
+                    considered=(left_id, right_id),
+                    stage="stage3.fellegi_sunter",
+                    items=tuple(
+                        EvidenceItem(
+                            kind="field_weight",
+                            label=w.field,
+                            detail=w.description,
+                            weight=f"{w.weight:+.2f} bits",
+                        )
+                        for w in score.weights
+                    ),
+                ),
+            )
+        )
+
+    # The clerical-review band becomes typed exceptions carrying the full breakdown,
+    # so a human opens a row already knowing what the model saw and where it stopped.
+    for score in sorted(review, key=lambda s: (-s.total, s.pair))[:50]:
+        left_id, right_id = score.pair
+        if left_id in used or right_id in used:
+            continue
+        left = result.rows[left_id]
+        result.exceptions.append(
+            make_exception(
+                exception_type=ExceptionType.UNKNOWN,
+                reason=(
+                    f"match weight {score.total:+.1f} bits falls between the reject "
+                    f"threshold ({config.link_lower_bits:+.1f}) and the link threshold "
+                    f"({config.link_upper_bits:+.1f}) - too close to call"
+                ),
+                amount=left.amount,
+                source_ids=(left_id, right_id),
+                as_of=left.occurred_on,
+                evidence=EvidenceBundle(
+                    considered=(left_id, right_id),
+                    stage="stage3.fellegi_sunter",
+                    abstained_because="score inside the clerical-review band",
+                    items=tuple(
+                        EvidenceItem(
+                            kind="field_weight",
+                            label=w.field,
+                            detail=w.description,
+                            weight=f"{w.weight:+.2f} bits",
+                        )
+                        for w in score.weights
+                    ),
+                ),
+                suggested_action="Confirm or reject this pair; the field weights are shown.",
+            )
+        )
+
+    detail = (
+        f"scored {len(open_scores)} open pair(s); linked {len(matches)} at or above "
+        f"{config.link_upper_bits:+.1f} bits; {len(review)} in the clerical-review band"
+    )
+    return matches, detail
+
+
 # --------------------------------------------------------------------------- #
 # Orchestration
 # --------------------------------------------------------------------------- #
@@ -523,18 +761,41 @@ def reconcile(
 
     # --- stage 1 -----------------------------------------------------------
     started = time.perf_counter()
+    suppressed, dedupe_detail = dedupe(result, clock)
+    result.suppressed_ids = suppressed
     matches, detail = stage1_deterministic(result, config)
-    _add_stage(result, "stage1", "deterministic keys", matches, started, detail)
+    _add_stage(
+        result, "stage1", "deterministic keys", matches, started, f"{dedupe_detail}; {detail}"
+    )
 
     # --- stage 2: candidate generation -----------------------------------
-    # Blocking proposes; it never decides. Pairs already consumed by Stage 1 are
-    # excluded, so the ladder in the UI shows each stage's real contribution rather
-    # than re-counting work an earlier stage already did.
+    # Blocking proposes; it never decides.
+    #
+    # Candidates are generated over *every* relevant row, including the ones Stage 1
+    # already matched. That looks wasteful and is not: Stage 3 fits its m and u
+    # probabilities by EM on this set, and the residue left after Stage 1 is a badly
+    # biased sample of it - all the easy true matches have been removed. Fitting on
+    # the residue produced a model that assigned "lands in the expected settlement
+    # window" a *negative* weight, because among the leftovers that level really did
+    # correlate with non-matches. EM needs a representative sample; the full candidate
+    # set is one, the residue is not.
+    #
+    # Stage 3 still only *proposes* matches among pairs neither of whose rows Stage 1
+    # consumed, so the ladder shows each stage's real contribution.
     started = time.perf_counter()
-    consumed = result.consumed_ids()
-    open_rows = [row for row in relevant_rows(result.rows.values()) if row.txn_id not in consumed]
-    candidates = generate_candidates(open_rows)
+    candidates = generate_candidates(
+        [
+            row
+            for row in relevant_rows(result.rows.values())
+            if row.txn_id not in result.suppressed_ids
+        ]
+    )
     result.candidates = candidates
+    consumed = result.consumed_ids()
+    open_pairs = {
+        pair for pair in candidates.pairs if pair[0] not in consumed and pair[1] not in consumed
+    }
+    result.open_pairs = open_pairs
     _add_stage(
         result,
         "stage2",
@@ -542,12 +803,21 @@ def reconcile(
         [],
         started,
         detail=(
-            f"{len(candidates.pairs):,} candidate pair(s) from "
-            f"{len(open_rows)} unmatched row(s), reduction ratio "
+            f"{len(candidates.pairs):,} candidate pair(s), reduction ratio "
             f"{candidates.reduction_ratio:.4f} against "
-            f"{candidates.total_possible:,} possible comparisons"
+            f"{candidates.total_possible:,} possible comparisons; "
+            f"{len(open_pairs):,} still open after Stage 1"
         ),
     )
+
+    # --- stage 3: probabilistic linkage ----------------------------------
+    started = time.perf_counter()
+    if candidates.pairs:
+        model, scores = score_candidates(result.rows, sorted(candidates.pairs))
+        result.linkage_model = model
+        result.pair_scores = {score.pair: score for score in scores}
+    matches, detail = stage3_linkage(result, config)
+    _add_stage(result, "stage3", "Fellegi-Sunter linkage", matches, started, detail)
 
     offenders = result.check_no_double_spend()
     if offenders:

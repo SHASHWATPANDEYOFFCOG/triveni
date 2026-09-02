@@ -304,19 +304,41 @@ def test_blocking_is_wired_into_the_pipeline_as_stage_two() -> None:
 
     result = reconcile()
     stages = [s.stage for s in result.stages]
-    assert stages == ["stage0", "stage1", "stage2"]
+    assert stages == ["stage0", "stage1", "stage2", "stage3"]
     assert result.candidates is not None
     assert result.candidates.pairs, "Stage 2 produced no candidates for Stage 3"
     detail = next(s for s in result.stages if s.stage == "stage2").detail
     assert "reduction ratio" in detail
 
 
-def test_stage_two_only_considers_rows_stage_one_left_behind() -> None:
-    """The ladder shows each stage's real contribution, not re-counted work."""
+def test_stage_two_blocks_everything_but_only_open_pairs_are_matchable() -> None:
+    """Two different sets, for two different jobs.
+
+    `candidates.pairs` covers *every* relevant row, including ones Stage 1 already
+    matched, because Stage 3 fits its EM model on this set and the residue is a badly
+    biased sample of it - all the easy true matches have been removed. Fitting on the
+    residue taught the model that landing in the expected settlement window was
+    evidence *against* a match.
+
+    `open_pairs` is the subset a later stage may actually turn into a match, and that
+    is what keeps the stage ladder honest.
+    """
     from recon.pipeline import reconcile
 
     result = reconcile()
-    consumed = result.consumed_ids()
     assert result.candidates is not None
-    for left, right in result.candidates.pairs:
-        assert left not in consumed and right not in consumed
+    assert result.open_pairs <= result.candidates.pairs
+    assert len(result.open_pairs) < len(result.candidates.pairs)
+
+    # open_pairs is a snapshot taken at Stage 2, so it is compared against what
+    # Stage 1 had consumed at that moment - not against the final consumed set, which
+    # also contains whatever Stage 3 went on to match out of these very pairs.
+    consumed_by_stage_one = {
+        row_id
+        for match in result.matches
+        if match.stage.startswith("stage1")
+        for row_id in match.all_ids
+    }
+    for left, right in result.open_pairs:
+        assert left not in consumed_by_stage_one
+        assert right not in consumed_by_stage_one

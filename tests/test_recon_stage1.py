@@ -290,7 +290,7 @@ def test_a_later_stage_may_only_add(result) -> None:
 
 
 def test_every_stage_reports_its_contribution_and_wall_clock(result) -> None:
-    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2"]
+    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3"]
     for report in result.stages:
         assert report.elapsed_ms >= 0
         assert report.detail

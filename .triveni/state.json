@@ -1,5 +1,5 @@
 {
-  "milestone": "M8",
+  "milestone": "M9",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -10,7 +10,8 @@
     "M4",
     "M5",
     "M6",
-    "M7"
+    "M7",
+    "M8"
   ],
   "blocked": null,
   "notes": [
@@ -23,23 +24,25 @@
     "M5: labels generated first, data derived; 4 integrity properties enforced by tests (labels balance, no hint leakage, opaque row ids, recon cannot import truth)",
     "M6 baseline: precision 1.000 / recall 0.0599 over 3808 true pairs; 1 LLM call across 535 rows. Stage 1 is intentionally low-recall.",
     "M7: PC 1.0000 / RR 0.9914 at 5,481 rows. Per-strategy measurement removed 10,236 useless pairs (amount buckets) and 638,111 (token counterparty keys).",
-    "M7 corrections to ground truth: explicit 1:1 payment-invoice links (recall denominator was 15x too large), settlement ids (UTR matches scored as false positives), and settlement UTR now equals its bank credit's UTR."
+    "M7 corrections to ground truth: explicit 1:1 payment-invoice links (recall denominator was 15x too large), settlement ids (UTR matches scored as false positives), and settlement UTR now equals its bank credit's UTR.",
+    "M8: EM was fitting on the Stage-1 residue (biased) and learned inverted date weights; both fixed. Deduplication added - the 5 remaining false positives were duplicate payments at +47.9 bits that no threshold could exclude."
   ],
   "metrics_snapshot": {
-    "tests": 557,
+    "tests": 560,
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
-    "M7": {
-      "precision": "1.000",
-      "recall": "0.3324",
-      "true_pairs": 731,
-      "pair_completeness_seed": "1.0000",
-      "reduction_ratio_seed": "0.9224",
-      "pair_completeness_full": "1.0000",
-      "reduction_ratio_full": "0.9914",
+    "M8": {
+      "match_rate": "94.95%",
+      "precision": "100.00%",
+      "recall": "34.75%",
+      "unexplained": "Rs 18,994.55",
       "llm_call_rate": "5.00%",
-      "llm_calls_absolute": 1
+      "llm_calls_absolute": 1,
+      "exceptions": {
+        "corrupt_row": 2,
+        "duplicate": 10
+      }
     }
   }
 }
