@@ -125,20 +125,34 @@ class _MoneyPathVisitor(ast.NodeVisitor):
 
     @staticmethod
     def _is_decimal_division(node: ast.BinOp) -> bool:
-        """Allow ``Decimal(a) / Decimal(b)`` - exact, and how rates are built."""
+        """Allow a division where at least one operand is provably a ``Decimal``.
+
+        This is sound rather than lenient, and the reason is a language guarantee:
+        ``Decimal`` refuses mixed arithmetic with ``float``. ``Decimal(1) / 0.5``
+        raises ``TypeError`` - it does not quietly coerce. So if either operand is a
+        Decimal, the other can only be an ``int`` or another ``Decimal``, and the
+        result is exact. (``tests/test_money.py`` pins that guarantee, so if a future
+        Python ever relaxed it, the lint's justification would fail loudly.)
+
+        Requiring *both* sides was the first implementation and it flagged correct
+        code like ``minutes * rate_per_hour / Decimal(60)``, where the left operand
+        is a product rather than a bare Decimal call. Suppressing those one by one
+        would have trained the reader to ignore the marker, which is how a lint dies.
+        """
 
         def is_decimal(expr: ast.expr) -> bool:
             if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
                 return expr.func.id == "Decimal"
             if isinstance(expr, ast.Name):
-                return expr.id.endswith("_decimal") or expr.id in {"exact", "value"}
+                return expr.id.endswith("_decimal")
             if isinstance(expr, ast.Attribute):
                 return expr.attr in {"value", "as_decimal"}
             if isinstance(expr, ast.BinOp):
-                return is_decimal(expr.left) and is_decimal(expr.right)
+                # Decimal op (int|Decimal) is Decimal; anything else has raised.
+                return is_decimal(expr.left) or is_decimal(expr.right)
             return False
 
-        return is_decimal(node.left) and is_decimal(node.right)
+        return is_decimal(node.left) or is_decimal(node.right)
 
 
 def check_file(path: Path) -> tuple[list[Finding], list[Suppression]]:

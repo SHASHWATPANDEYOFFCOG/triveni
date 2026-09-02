@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from core.audit.log import AppendReceipt, AuditLog, Verdict, new_decision
 from core.clock import Clock
@@ -32,11 +32,9 @@ from core.errors import KillSwitchEngaged, TriveniError, UnauditedAction
 from core.money import format_inr
 from core.policy import ActionClass, ActionRequest, Decision, PolicyEngine
 
-T = TypeVar("T")
-
 
 @dataclass(frozen=True, slots=True)
-class GuardResult(Generic[T]):
+class GuardResult[T]:
     """What happened, why, and the proof it was recorded before it happened."""
 
     decision: Decision
@@ -57,7 +55,7 @@ class GuardResult(Generic[T]):
         return self.receipt.seq
 
 
-def _post_to_books(
+def _post_to_books[T](
     *,
     request: ActionRequest,
     receipt: AppendReceipt,
@@ -108,7 +106,7 @@ class Guard:
     clock: Clock
     run_id: str = ""
 
-    def submit(
+    def submit[T](
         self,
         request: ActionRequest,
         apply: Callable[[], T] | None = None,

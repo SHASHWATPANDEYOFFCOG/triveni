@@ -7,7 +7,7 @@ name = "triveni"
 version = "0.1.0"
 description = "Triveni - the AI Finance Controller: three ledgers, one balanced set of books, with a guarantee."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 
 # Every pin below was verified to install and its API exercised on this machine
@@ -44,7 +44,10 @@ filterwarnings = ["ignore::DeprecationWarning"]
 markers = ["slow: long-running", "golden: golden-file metric tests"]
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12 rather than 3.11: numpy ships type stubs that use PEP 695 `type` statements,
+# which mypy only parses at 3.12+. The Dockerfile pins python:3.12-slim to match, so
+# the checked floor and the shipped floor are the same number.
+python_version = "3.12"
 files = ["core", "recon"]
 strict = true
 warn_unreachable = true
@@ -57,7 +60,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RET", "ARG", "PTH", "TRY", "N"]

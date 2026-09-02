@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import math
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from hypothesis import assume, given, settings
@@ -37,6 +38,8 @@ from core.money import (
 paise = st.integers(min_value=-10_00_00_00_000, max_value=10_00_00_00_000)
 positive_paise = st.integers(min_value=0, max_value=10_00_00_00_000)
 weights = st.lists(st.integers(min_value=0, max_value=1000), min_size=1, max_size=25)
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 # --------------------------------------------------------------------------- #
@@ -329,3 +332,36 @@ def test_as_decimal_is_exact() -> None:
     value = Money(124_000_050).as_decimal()
     assert value == Decimal("1240000.50")
     assert not math.isnan(float(value))  # Decimal -> float is fine for display only
+
+
+def test_decimal_refuses_float_arithmetic() -> None:
+    """The language guarantee money-lint's division rule rests on.
+
+    `scripts/money_lint.py` permits a division when either operand is provably a
+    Decimal, reasoning that Decimal refuses to mix with float. If a future Python
+    ever relaxed that, the lint would be unsound - so the assumption is pinned here
+    rather than left as a comment.
+    """
+    with pytest.raises(TypeError):
+        Decimal(1) / 0.5
+    with pytest.raises(TypeError):
+        0.5 / Decimal(1)
+    with pytest.raises(TypeError):
+        Decimal(1) * 0.5
+    with pytest.raises(TypeError):
+        Decimal(1) + 0.5
+    # int is fine, and stays exact.
+    assert Decimal(1) / 4 == Decimal("0.25")
+
+
+def test_money_lint_still_catches_a_bare_float_division() -> None:
+    """The relaxed rule must not have opened a hole: no Decimal, still a finding."""
+    from scripts.money_lint import check_file
+
+    module = ROOT / "tests" / "_lint_probe.py"
+    module.write_text("def f(total, n):\n    return total / n\n", encoding="utf-8")
+    try:
+        findings, _ = check_file(module)
+    finally:
+        module.unlink()
+    assert [f.rule for f in findings] == ["true-division"]
