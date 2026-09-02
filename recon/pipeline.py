@@ -72,6 +72,7 @@ from recon.normalize import (
     parse_narration,
 )
 from recon.subsetsum import Tolerance
+from recon.waterfall import FittedRates, Waterfall, decompose, fit_rates, observations_from
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA = ROOT / "data" / "seed"
@@ -204,6 +205,12 @@ class ReconResult:
 
     pair_scores: dict[tuple[str, str], PairScore] = field(default_factory=dict)
     """Per-pair match weight with its field breakdown, for the triage evidence panel."""
+
+    waterfalls: dict[str, Waterfall] = field(default_factory=dict)
+    """Per-settlement decomposition, keyed by bank row id. Loop 2's output."""
+
+    fitted_rates: FittedRates | None = None
+    """Effective rates recovered from this batch, or None when not identifiable."""
 
     netting: ManyToOneResult | None = None
     """Stage 4's global attribution of payments to netted settlements."""
@@ -915,11 +922,19 @@ def stage4_global_assignment(
     for member, bucket_id in sorted(expected_bucket.items()):
         hint[bucket_id] = (*hint[bucket_id], member)
     # A day of disagreement between a payment's expected settlement date and the day
-    # the credit landed costs the equivalent of Rs 10,000 of unexplained residual.
-    # Large enough to dominate the amount signal, which is nearly flat between
-    # adjacent days; far below the attribution bonus, so it never leaves a payment
-    # unattributed just to avoid a date penalty.
-    day_penalty = 10_00_000
+    # the credit landed is priced as *dominant* evidence, not as one signal among
+    # several. T+2 across the bank calendar is contractual, not statistical: the
+    # amount residual should only ever break ties between payments that are equally
+    # plausible on date, never override the calendar.
+    #
+    # Pricing the two comparably was a misspecification, and it hid behind an
+    # accident. The single-model solver was under-budgeted, so it stayed near the
+    # date-based hint and scored 0.9169 precision; decomposing the problem gave it
+    # more effective search, it moved away from the hint toward a better objective
+    # value, and precision fell to 0.83. The hint being better than the optimum is
+    # not a solver problem - it is the objective being wrong. Raising this to Rs 10
+    # lakh per day of drift took precision to 0.9838 and recall to 0.8317.
+    day_penalty = 10_00_00_000
     pair_weights: dict[tuple[str, str], float] = {}
     for bucket in buckets:
         landed = credit_dates[bucket.bucket_id]
@@ -989,7 +1004,19 @@ def stage4_global_assignment(
                 ledger_ids=tuple(sorted(ledger_ids)),
                 links=(),
                 amount=credit.amount,
-                confidence=Decimal("0.95") if netting.optimal else Decimal("0.85"),
+                # Deliberately below the auto-post threshold, and NOT keyed to whether
+                # the solver proved optimality.
+                #
+                # Optimality means "best under my objective", not "correct", and
+                # conflating the two let settlement attributions post unsupervised at
+                # 0.95 while measuring 0.977 precision - so 2.3% of wrong attributions
+                # were reaching the books because a solver said it had finished.
+                #
+                # Netting attributions are proposals until there is a calibrated basis
+                # for trusting them, which is exactly what M12's conformal threshold
+                # provides. Until then they go to a human, and auto-post precision
+                # stays at 1.000.
+                confidence=Decimal("0.85"),
                 reason=(
                     f"{len(attribution.member_ids)} payment(s) totalling "
                     f"{format_inr(Money(gross))} net to the "
@@ -1130,6 +1157,105 @@ def _could_settle_into(row: CanonicalTxn, landed: dt.date, config: ReconConfig) 
         slack_days=config.date_slack_days,
     )
     return low <= landed <= high
+
+
+
+# --------------------------------------------------------------------------- #
+# Stage 5 - settlement decomposition (Loop 2)
+# --------------------------------------------------------------------------- #
+def stage5_decompose(result: ReconResult, config: ReconConfig) -> tuple[list[MatchGroup], str]:
+    """Explain each settlement's withheld amount, to the paise.
+
+    Fits the effective rates from the batch first, then decomposes every settlement
+    group with them. Anything the named components cannot account for becomes a typed
+    exception rather than being absorbed into a tolerance - a waterfall that balances
+    by construction explains nothing.
+
+    Produces no matches: it explains the ones Stage 4 already made.
+    """
+    settlements = [m for m in result.matches if m.stage.startswith("stage4")]
+    if not settlements:
+        return [], "no settlement groups to decompose"
+
+    groups: list[tuple[list[CanonicalTxn], Money]] = []
+    for match in settlements:
+        payments = [
+            result.rows[i]
+            for i in match.gateway_ids
+            if result.rows[i].kind is TxnKind.PAYMENT
+        ]
+        groups.append((payments, result.rows[match.bank_ids[0]].amount))
+
+    result.fitted_rates = fit_rates(observations_from(groups))
+
+    refunds_by_date: dict[dt.date, list[CanonicalTxn]] = defaultdict(list)
+    for row in result.rows.values():
+        if row.kind is TxnKind.REFUND:
+            refunds_by_date[row.settled_on or row.occurred_on].append(row)
+
+    balanced = 0
+    unexplained_total = 0
+    for match, (payments, net_received) in zip(settlements, groups, strict=True):
+        credit = result.rows[match.bank_ids[0]]
+        landed = credit.settled_on or credit.occurred_on
+        waterfall = decompose(
+            settlement_id=credit.external_id,
+            as_of=landed,
+            payments=payments,
+            net_received=net_received,
+            refunds=tuple(refunds_by_date.get(landed, ())),
+            card=config.rate_card,
+            fitted=result.fitted_rates,
+        )
+        result.waterfalls[credit.txn_id] = waterfall
+        if waterfall.balanced:
+            balanced += 1
+            continue
+
+        unexplained_total += abs(waterfall.residual).paise
+        result.exceptions.append(
+            make_exception(
+                exception_type=ExceptionType.UNKNOWN,
+                reason=(
+                    f"settlement {credit.external_id} leaves "
+                    f"{format_inr(abs(waterfall.residual))} that no named component "
+                    f"explains, after MDR, GST, TDS and traced refunds"
+                ),
+                amount=abs(waterfall.residual),
+                source_ids=(credit.txn_id,),
+                as_of=landed,
+                evidence=EvidenceBundle(
+                    considered=(credit.txn_id, *match.gateway_ids[:20]),
+                    stage="stage5.decompose",
+                    abstained_because="the waterfall does not close",
+                    items=tuple(
+                        EvidenceItem(
+                            kind="arithmetic",
+                            label=line.component,
+                            detail=format_inr(line.amount),
+                            weight=line.basis,
+                        )
+                        for line in waterfall.lines
+                    ),
+                ),
+                suggested_action=(
+                    "Check for an untraced refund, a dispute hold, or a reserve "
+                    "release that belongs to a different cycle."
+                ),
+            )
+        )
+
+    fit_note = (
+        f"rates fitted on {result.fitted_rates.observations} fee-consistent "
+        f"settlement(s), R^2 {result.fitted_rates.r_squared}"
+        if result.fitted_rates
+        else "not enough fee-consistent settlements to fit rates; using the contracted card"
+    )
+    detail = (
+        f"{balanced}/{len(settlements)} waterfall(s) balance to Rs 0; "
+        f"{format_inr(Money(unexplained_total))} unexplained; {fit_note}"
+    )
+    return [], detail
 
 
 # --------------------------------------------------------------------------- #
@@ -1308,6 +1434,11 @@ def reconcile(
     started = time.perf_counter()
     matches, detail = stage4_global_assignment(result, config)
     _add_stage(result, "stage4", "global assignment", matches, started, detail)
+
+    # --- stage 5: settlement decomposition -------------------------------
+    started = time.perf_counter()
+    _none, detail = stage5_decompose(result, config)
+    _add_stage(result, "stage5", "settlement decomposition", [], started, detail)
 
     offenders = result.check_no_double_spend()
     if offenders:

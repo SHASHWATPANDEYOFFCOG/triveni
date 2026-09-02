@@ -298,7 +298,7 @@ def test_a_later_stage_may_only_add(result) -> None:
 
 
 def test_every_stage_reports_its_contribution_and_wall_clock(result) -> None:
-    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3", "stage4"]
+    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3", "stage4", "stage5"]
     for report in result.stages:
         assert report.elapsed_ms >= 0
         assert report.detail
@@ -330,7 +330,7 @@ def test_stage1_precision_is_perfect_and_recall_is_honestly_low() -> None:
     assert by_name["auto_post_precision"].value == 1, (
         "nothing wrong may be posted without a human"
     )
-    assert by_name["precision"].value > Decimal("0.85")
+    assert by_name["precision"].value > Decimal("0.90")
     assert by_name["recall"].value > Decimal("0.60"), (
         "with Stage 4's netting, recall should be well past the deterministic baseline"
     )

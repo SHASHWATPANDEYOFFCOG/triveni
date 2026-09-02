@@ -1,5 +1,5 @@
 {
-  "milestone": "M10",
+  "milestone": "M11",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -12,7 +12,8 @@
     "M6",
     "M7",
     "M8",
-    "M9"
+    "M9",
+    "M10"
   ],
   "blocked": null,
   "notes": [
@@ -28,23 +29,30 @@
     "M7 corrections to ground truth: explicit 1:1 payment-invoice links (recall denominator was 15x too large), settlement ids (UTR matches scored as false positives), and settlement UTR now equals its bank credit's UTR.",
     "M8: EM was fitting on the Stage-1 residue (biased) and learned inverted date weights; both fixed. Deduplication added - the 5 remaining false positives were duplicate payments at +47.9 bits that no threshold could exclude.",
     "M9: five solver errors that each satisfied their constraints - inverted tolerance, telescoping objective, calendar missing from the objective, per-row instead of per-relation groups, wall-clock budget breaking determinism.",
-    "M9 finding: precision FALLS as the solver budget rises (0.9169 at 0.5 units, 0.8329 at 2.0). The objective is a proxy; optimising it harder is not free."
+    "M9 finding: precision FALLS as the solver budget rises (0.9169 at 0.5 units, 0.8329 at 2.0). The objective is a proxy; optimising it harder is not free.",
+    "M10: fitting on ALL settlements gave card_debit 2524 bps vs contracted 90; restricting to fee-consistent settlements gave R^2 0.919. Thin-volume methods are reported as unidentifiable rather than fitted.",
+    "M10: solver optimality is not correctness - Stage 4 claiming 0.95 on proven-optimal netting dropped auto-post precision to 0.977. Netting is a proposal until M12 calibrates it."
   ],
   "metrics_snapshot": {
-    "tests": 591,
+    "tests": 607,
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
-    "M9": {
-      "match_rate": "95.70%",
-      "precision": "91.69%",
-      "recall": "81.53%",
-      "f1": "0.863",
+    "M10": {
+      "match_rate": "95.51%",
+      "precision": "97.73%",
+      "recall": "82.63%",
+      "f1": "0.895",
       "auto_post_precision": "100.00%",
-      "auto_post_coverage": "39.08%",
-      "unexplained": "Rs 0.00",
-      "saved_vs_manual": "Rs 7,175",
-      "exceptions": 54
+      "auto_post_coverage": "41.10%",
+      "waterfalls_balanced": "16/16",
+      "fit_r2": "0.919",
+      "unexplained": "Rs 2,021.31",
+      "full_dataset": {
+        "precision": "0.9538",
+        "recall": "0.8488",
+        "rows": 5481
+      }
     }
   }
 }

@@ -272,7 +272,7 @@ def test_the_total_is_exactly_the_sum_of_its_parts(fitted) -> None:
 # Stage 3 in the pipeline
 # --------------------------------------------------------------------------- #
 def test_stage_three_runs_and_reports(result) -> None:
-    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3", "stage4"]
+    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2", "stage3", "stage4", "stage5"]
     stage3 = next(s for s in result.stages if s.stage == "stage3")
     assert "clerical-review band" in stage3.detail
 
