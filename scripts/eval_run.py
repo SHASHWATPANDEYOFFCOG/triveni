@@ -44,7 +44,7 @@ _SELFTEST_NOTE = (
 
 def _pipeline_available() -> bool:
     try:
-        import recon.pipeline  # noqa: F401
+        import scripts.eval_pipeline  # noqa: F401
     except ImportError:
         return False
     return True
@@ -182,7 +182,7 @@ def selftest_report() -> MetricsReport:
 
 def build_report(dataset: str | None = None) -> MetricsReport:
     if _pipeline_available():
-        from recon.pipeline import evaluate_pipeline  # type: ignore[attr-defined]
+        from scripts.eval_pipeline import evaluate_pipeline
 
         return evaluate_pipeline(dataset=dataset, seed=SEED)
     return selftest_report()

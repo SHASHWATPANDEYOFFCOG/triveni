@@ -1,5 +1,5 @@
 {
-  "milestone": "M6",
+  "milestone": "M7",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -8,7 +8,8 @@
     "M2",
     "M3",
     "M4",
-    "M5"
+    "M5",
+    "M6"
   ],
   "blocked": null,
   "notes": [
@@ -18,16 +19,22 @@
     "M2: RFC 6962 Merkle log verified exhaustively (130 sizes vs recursive oracle, 1225 consistency pairs); verify() localises tampering by index AND by tree size",
     "M3: posting requires a cryptographically valid audit receipt (subject-bound); policy engine is total under 300-example property test",
     "M4: metrics.json is byte-identical across processes and under PYTHONHASHSEED=random; cost model says the selftest fixture is net-negative vs manual, reported not tuned away",
-    "M5: labels generated first, data derived; 4 integrity properties enforced by tests (labels balance, no hint leakage, opaque row ids, recon cannot import truth)"
+    "M5: labels generated first, data derived; 4 integrity properties enforced by tests (labels balance, no hint leakage, opaque row ids, recon cannot import truth)",
+    "M6 baseline: precision 1.000 / recall 0.0599 over 3808 true pairs; 1 LLM call across 535 rows. Stage 1 is intentionally low-recall."
   ],
   "metrics_snapshot": {
-    "tests": 465,
+    "tests": 511,
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
     "eval_byte_identical": true,
-    "seed_rows": 520,
-    "full_rows": 5481,
-    "exception_types_covered": "16/16"
+    "M6_baseline": {
+      "precision": "1.000",
+      "recall": "0.0599",
+      "llm_call_rate": "5.00%",
+      "llm_calls_absolute": 1,
+      "true_pairs": 3808,
+      "rows": 535
+    }
   }
 }
