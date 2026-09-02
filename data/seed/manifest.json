@@ -7,7 +7,7 @@
     "ledger_rows": 238,
     "truth_groups": 32
   },
-  "digest": "db5e062c4e89ee256b6df64d956e94cc79264c5f725917e7f6ad82c851cf0674",
+  "digest": "2080b26df7d82441fa2e622ff79f5dfc12bbdc67cd73b311e0f6ce5218e91a7f",
   "distribution": {
     "chargeback_hold": 2,
     "corrupt_row": 2,

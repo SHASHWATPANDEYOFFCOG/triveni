@@ -192,6 +192,27 @@ class TruthGroup:
     anomalies: tuple[str, ...] = ()
     """ExceptionType values deliberately injected into this group."""
 
+    settlement_ids: tuple[str, ...] = ()
+    """The gateway's own settlement record(s) for this group.
+
+    Recorded separately from ``gateway_ids`` (which are payments) because the
+    settlement-to-bank-credit link is its own relation, and the strongest one in the
+    dataset: they share a UTR. Omitting it made Stage 1's correct UTR matches score
+    as false positives.
+    """
+
+    links: tuple[tuple[str, str], ...] = ()
+    """Explicit 1:1 (gateway payment id, ledger invoice id) pairs.
+
+    Recorded rather than inferred from co-membership, because the two are very
+    different claims. Fourteen payments and fourteen invoices settling on the same day
+    do *not* make 196 true pairs - each payment belongs to exactly one invoice, and
+    the other 182 combinations are rows that merely share a settlement date. Inferring
+    the pairing from group membership inflated the recall denominator roughly
+    fifteen-fold and made blocking look like it was losing pairs it never should have
+    had.
+    """
+
     def canonical(self) -> dict[str, Any]:
         return {
             "group_id": self.group_id,
@@ -203,6 +224,8 @@ class TruthGroup:
             "net_expected_paise": self.net_expected.paise,
             "components": dict(sorted(self.components.items())),
             "anomalies": list(self.anomalies),
+            "settlement_ids": list(self.settlement_ids),
+            "links": [list(link) for link in self.links],
         }
 
     def balances(self) -> bool:
@@ -630,22 +653,8 @@ def _build_settlements(
             credited_on = gen.calendar.next_business_day(settles_on)
             anomalies.append(ExceptionType.TIMING.value)
 
-        settlements.append(
-            {
-                "id": settlement_id,
-                "entity": "settlement",
-                "amount": net.paise,
-                "status": "processed",
-                "fees": -components.get(ExceptionType.FEE_MDR.value, 0),
-                "tax": -components.get(ExceptionType.GST_ON_FEE.value, 0),
-                "utr": gen.utr(),
-                "created_at": to_epoch(
-                    dt.datetime.combine(settles_on, dt.time(17, 30), tzinfo=IST)
-                ),
-            }
-        )
-
         bank_ids: list[str] = []
+        settlement_utr = ""
         missing = ExceptionType.MISSING_IN_BANK.value in planned
         if missing:
             anomalies.append(ExceptionType.MISSING_IN_BANK.value)
@@ -657,6 +666,13 @@ def _build_settlements(
                 anomalies.append(ExceptionType.SPLIT_SETTLEMENT.value)
             for index, credit in enumerate(credits):
                 utr = gen.utr()
+                if not settlement_utr:
+                    # The settlement's UTR *is* the UTR that appears on the bank
+                    # statement - that is the entire purpose of a Unique Transaction
+                    # Reference. Generating two different numbers made the gateway's
+                    # own payout unmatchable against the credit it produced, which is
+                    # not a hard reconciliation problem, it is an impossible one.
+                    settlement_utr = utr
                 balance = balance + credit
                 row_id = f"{settlement_id}-b{index}"
                 bank_rows.append(
@@ -674,11 +690,28 @@ def _build_settlements(
                 )
                 bank_ids.append(row_id)
 
+        settlements.append(
+            {
+                "id": settlement_id,
+                "entity": "settlement",
+                "amount": net.paise,
+                "status": "processed",
+                "fees": -components.get(ExceptionType.FEE_MDR.value, 0),
+                "tax": -components.get(ExceptionType.GST_ON_FEE.value, 0),
+                "utr": settlement_utr or gen.utr(),
+                "created_at": to_epoch(
+                    dt.datetime.combine(settles_on, dt.time(17, 30), tzinfo=IST)
+                ),
+            }
+        )
+
         group = TruthGroup(
             group_id=settlement_id,
             settlement_date=credited_on,
+            settlement_ids=(settlement_id,),
             ledger_ids=tuple(sorted(p["notes"]["invoice_no"] for p in batch)),
             gateway_ids=tuple(sorted(p["id"] for p in batch)),
+            links=tuple(sorted((p["id"], p["notes"]["invoice_no"]) for p in batch)),
             bank_ids=tuple(bank_ids),
             gross=gross,
             net_expected=net,

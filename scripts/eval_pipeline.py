@@ -19,6 +19,7 @@ from core.money import sum_money
 from ingest.canonical import SourceKind
 from recon.normalize import ParseSource
 from recon.pipeline import ReconConfig, reconcile
+from scripts.truth import true_pairs_from_group
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -56,9 +57,7 @@ def evaluate_pipeline(dataset: str | None = None, seed: int = 20260101) -> Metri
 
     true_pairs: set[tuple[str, str]] = set()
     for group in truth["groups"]:
-        true_pairs |= cross_source_pairs(
-            list(group["gateway_ids"]), list(group["bank_ids"]), list(group["ledger_ids"])
-        )
+        true_pairs |= true_pairs_from_group(group)
 
     def external(row_id: str) -> str:
         row = result.rows.get(row_id)

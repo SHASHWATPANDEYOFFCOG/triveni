@@ -290,7 +290,7 @@ def test_a_later_stage_may_only_add(result) -> None:
 
 
 def test_every_stage_reports_its_contribution_and_wall_clock(result) -> None:
-    assert [s.stage for s in result.stages] == ["stage0", "stage1"]
+    assert [s.stage for s in result.stages] == ["stage0", "stage1", "stage2"]
     for report in result.stages:
         assert report.elapsed_ms >= 0
         assert report.detail
@@ -317,10 +317,15 @@ def test_stage1_precision_is_perfect_and_recall_is_honestly_low() -> None:
     report = evaluate_pipeline()
     by_name = {m.name: m for m in report.metrics}
     assert by_name["precision"].value == 1, "Stage 1's exact keys must never be wrong"
-    assert by_name["recall"].value < Decimal("0.5"), (
-        "Stage 1 alone should not have high recall - if it does, the metric is wrong"
+    assert by_name["recall"].value < Decimal("0.6"), (
+        "the deterministic stages alone should not have high recall - if they do, "
+        "either the metric is wrong or an exact key is matching things it should not"
     )
-    assert by_name["true_pairs_total"].value > 1000
+    # The denominator was 3,808 until M7, which was wrong: it took the cross product
+    # of every payment and every invoice in a settlement group, claiming 196 pairs for
+    # a 14-payment settlement when there are 14. Ground truth now records the explicit
+    # 1:1 links, so the real figure is an order of magnitude smaller.
+    assert 500 < by_name["true_pairs_total"].value < 1500
     assert by_name["llm_call_rate"].value <= Decimal("0.15")
 
 

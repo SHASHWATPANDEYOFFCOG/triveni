@@ -1,5 +1,5 @@
 {
-  "milestone": "M7",
+  "milestone": "M8",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -9,7 +9,8 @@
     "M3",
     "M4",
     "M5",
-    "M6"
+    "M6",
+    "M7"
   ],
   "blocked": null,
   "notes": [
@@ -20,21 +21,25 @@
     "M3: posting requires a cryptographically valid audit receipt (subject-bound); policy engine is total under 300-example property test",
     "M4: metrics.json is byte-identical across processes and under PYTHONHASHSEED=random; cost model says the selftest fixture is net-negative vs manual, reported not tuned away",
     "M5: labels generated first, data derived; 4 integrity properties enforced by tests (labels balance, no hint leakage, opaque row ids, recon cannot import truth)",
-    "M6 baseline: precision 1.000 / recall 0.0599 over 3808 true pairs; 1 LLM call across 535 rows. Stage 1 is intentionally low-recall."
+    "M6 baseline: precision 1.000 / recall 0.0599 over 3808 true pairs; 1 LLM call across 535 rows. Stage 1 is intentionally low-recall.",
+    "M7: PC 1.0000 / RR 0.9914 at 5,481 rows. Per-strategy measurement removed 10,236 useless pairs (amount buckets) and 638,111 (token counterparty keys).",
+    "M7 corrections to ground truth: explicit 1:1 payment-invoice links (recall denominator was 15x too large), settlement ids (UTR matches scored as false positives), and settlement UTR now equals its bank credit's UTR."
   ],
   "metrics_snapshot": {
-    "tests": 511,
+    "tests": 557,
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
-    "eval_byte_identical": true,
-    "M6_baseline": {
+    "M7": {
       "precision": "1.000",
-      "recall": "0.0599",
+      "recall": "0.3324",
+      "true_pairs": 731,
+      "pair_completeness_seed": "1.0000",
+      "reduction_ratio_seed": "0.9224",
+      "pair_completeness_full": "1.0000",
+      "reduction_ratio_full": "0.9914",
       "llm_call_rate": "5.00%",
-      "llm_calls_absolute": 1,
-      "true_pairs": 3808,
-      "rows": 535
+      "llm_calls_absolute": 1
     }
   }
 }

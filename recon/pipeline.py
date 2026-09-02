@@ -40,6 +40,7 @@ from core.money import Money, format_inr
 from ingest.adapters.csv_bank import read_bank_statement, read_ledger
 from ingest.adapters.fixtures import read_gateway
 from ingest.canonical import CanonicalTxn, CorruptRecord, IngestResult, SourceKind, TxnKind
+from recon.blocking import CandidateSet, generate_candidates, relevant_rows
 from recon.exceptions import (
     EvidenceBundle,
     EvidenceItem,
@@ -125,6 +126,8 @@ class ReconResult:
     rows: dict[str, CanonicalTxn] = field(default_factory=dict)
     corrupt: list[CorruptRecord] = field(default_factory=list)
     narration_parses: dict[str, NarrationParse] = field(default_factory=dict)
+    candidates: CandidateSet | None = None
+    """What Stage 2 proposed. Stage 3 scores exactly these pairs and no others."""
 
     # --- invariants --------------------------------------------------------
     def consumed_ids(self) -> set[str]:
@@ -476,7 +479,13 @@ def reconcile(
     canonical_rows, parses = canonicalise(raw_rows)
     result.rows = {row.txn_id: row for row in canonical_rows}
     result.narration_parses = parses
-    deterministic = sum(1 for p in parses.values() if p.complete)
+    # Counted over rows that actually carry a narration, not over every ingested row:
+    # "19 of 535 parsed without a model" would be a meaningless denominator, since
+    # 515 of those rows have no free text to parse in the first place.
+    narrated_ids = [
+        row.txn_id for row in canonical_rows if row.source is SourceKind.BANK and row.raw_narration.strip()
+    ]
+    deterministic = sum(1 for txn_id in narrated_ids if parses[txn_id].complete)
     _add_stage(
         result,
         "stage0",
@@ -484,8 +493,8 @@ def reconcile(
         [],
         started,
         detail=(
-            f"{len(canonical_rows)} rows normalised; {deterministic}/{len(parses)} "
-            f"narrations parsed without a model; {len(result.corrupt)} corrupt"
+            f"{len(canonical_rows)} rows normalised; {deterministic}/{len(narrated_ids)} "
+            f"bank narrations parsed without a model; {len(result.corrupt)} corrupt row(s)"
         ),
     )
 
@@ -516,6 +525,29 @@ def reconcile(
     started = time.perf_counter()
     matches, detail = stage1_deterministic(result, config)
     _add_stage(result, "stage1", "deterministic keys", matches, started, detail)
+
+    # --- stage 2: candidate generation -----------------------------------
+    # Blocking proposes; it never decides. Pairs already consumed by Stage 1 are
+    # excluded, so the ladder in the UI shows each stage's real contribution rather
+    # than re-counting work an earlier stage already did.
+    started = time.perf_counter()
+    consumed = result.consumed_ids()
+    open_rows = [row for row in relevant_rows(result.rows.values()) if row.txn_id not in consumed]
+    candidates = generate_candidates(open_rows)
+    result.candidates = candidates
+    _add_stage(
+        result,
+        "stage2",
+        "blocking",
+        [],
+        started,
+        detail=(
+            f"{len(candidates.pairs):,} candidate pair(s) from "
+            f"{len(open_rows)} unmatched row(s), reduction ratio "
+            f"{candidates.reduction_ratio:.4f} against "
+            f"{candidates.total_possible:,} possible comparisons"
+        ),
+    )
 
     offenders = result.check_no_double_spend()
     if offenders:
