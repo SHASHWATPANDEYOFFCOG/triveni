@@ -1,0 +1,150 @@
+{
+  "count": 12,
+  "entity": "collection",
+  "items": [
+    {
+      "amount": 220216,
+      "created_at": 1773034200,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000107",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000106",
+      "status": "processed"
+    },
+    {
+      "amount": 33088,
+      "created_at": 1772861400,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000120",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000119",
+      "status": "processed"
+    },
+    {
+      "amount": 446965,
+      "created_at": 1773120600,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000131",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000130",
+      "status": "processed"
+    },
+    {
+      "amount": 153896,
+      "created_at": 1773120600,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000152",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000151",
+      "status": "processed"
+    },
+    {
+      "amount": 280456,
+      "created_at": 1773207000,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000189",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000188",
+      "status": "processed"
+    },
+    {
+      "amount": 47588,
+      "created_at": 1773293400,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000256",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000255",
+      "status": "processed"
+    },
+    {
+      "amount": 61432,
+      "created_at": 1773898200,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000333",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000332",
+      "status": "processed"
+    },
+    {
+      "amount": 16837,
+      "created_at": 1773898200,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000336",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000335",
+      "status": "processed"
+    },
+    {
+      "amount": 78528,
+      "created_at": 1773984600,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000373",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000372",
+      "status": "processed"
+    },
+    {
+      "amount": 61872,
+      "created_at": 1773898200,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000384",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000383",
+      "status": "processed"
+    },
+    {
+      "amount": 121715,
+      "created_at": 1774243800,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000461",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000460",
+      "status": "processed"
+    },
+    {
+      "amount": 186072,
+      "created_at": 1774330200,
+      "currency": "INR",
+      "entity": "refund",
+      "id": "rfnd_601010000486",
+      "notes": {
+        "reason": "customer request"
+      },
+      "payment_id": "pay_601010000485",
+      "status": "processed"
+    }
+  ]
+}

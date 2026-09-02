@@ -1,0 +1,1117 @@
+{
+  "groups": [
+    {
+      "anomalies": [
+        "chargeback_hold"
+      ],
+      "bank_ids": [
+        "TRAB28E16F13"
+      ],
+      "components": {
+        "chargeback_hold": -24103,
+        "fee_mdr": -13600,
+        "gst_on_fee": -2448,
+        "tds_194o": -3676
+      },
+      "gateway_ids": [
+        "pay_601010000002",
+        "pay_601010000004",
+        "pay_601010000006",
+        "pay_601010000008",
+        "pay_601010000010",
+        "pay_601010000012",
+        "pay_601010000014",
+        "pay_601010000016",
+        "pay_601010000018",
+        "pay_601010000020",
+        "pay_601010000022",
+        "pay_601010000024",
+        "pay_601010000026",
+        "pay_601010000028"
+      ],
+      "gross_paise": 3674932,
+      "group_id": "setl_601010000489",
+      "ledger_ids": [
+        "INV-2026-00001",
+        "INV-2026-00002",
+        "INV-2026-00003",
+        "INV-2026-00004",
+        "INV-2026-00005",
+        "INV-2026-00006",
+        "INV-2026-00007",
+        "INV-2026-00008",
+        "INV-2026-00009",
+        "INV-2026-00010",
+        "INV-2026-00011",
+        "INV-2026-00012",
+        "INV-2026-00013",
+        "INV-2026-00014"
+      ],
+      "net_expected_paise": 3631105,
+      "settlement_date": "2026-03-04"
+    },
+    {
+      "anomalies": [
+        "over_pay"
+      ],
+      "bank_ids": [
+        "TR5397FFB5DE"
+      ],
+      "components": {
+        "fee_mdr": -34176,
+        "gst_on_fee": -6151,
+        "over_pay": 41925,
+        "tds_194o": -2065
+      },
+      "gateway_ids": [
+        "pay_601010000030",
+        "pay_601010000032",
+        "pay_601010000034",
+        "pay_601010000036",
+        "pay_601010000038",
+        "pay_601010000040",
+        "pay_601010000042",
+        "pay_601010000044",
+        "pay_601010000046",
+        "pay_601010000048",
+        "pay_601010000050",
+        "pay_601010000052",
+        "pay_601010000054",
+        "pay_601010000056"
+      ],
+      "gross_paise": 2064510,
+      "group_id": "setl_601010000490",
+      "ledger_ids": [
+        "INV-2026-00015",
+        "INV-2026-00016",
+        "INV-2026-00017",
+        "INV-2026-00018",
+        "INV-2026-00019",
+        "INV-2026-00020",
+        "INV-2026-00021",
+        "INV-2026-00022",
+        "INV-2026-00023",
+        "INV-2026-00024",
+        "INV-2026-00025",
+        "INV-2026-00026",
+        "INV-2026-00027",
+        "INV-2026-00028"
+      ],
+      "net_expected_paise": 2064043,
+      "settlement_date": "2026-03-05"
+    },
+    {
+      "anomalies": [],
+      "bank_ids": [
+        "TR99ADE5591A"
+      ],
+      "components": {
+        "fee_mdr": -26886,
+        "gst_on_fee": -4840,
+        "tds_194o": -2296
+      },
+      "gateway_ids": [
+        "pay_601010000058",
+        "pay_601010000060",
+        "pay_601010000062",
+        "pay_601010000064",
+        "pay_601010000066",
+        "pay_601010000068",
+        "pay_601010000070",
+        "pay_601010000072",
+        "pay_601010000074",
+        "pay_601010000076",
+        "pay_601010000078",
+        "pay_601010000080",
+        "pay_601010000082",
+        "pay_601010000084"
+      ],
+      "gross_paise": 2293619,
+      "group_id": "setl_601010000491",
+      "ledger_ids": [
+        "INV-2026-00029",
+        "INV-2026-00030",
+        "INV-2026-00031",
+        "INV-2026-00032",
+        "INV-2026-00033",
+        "INV-2026-00034",
+        "INV-2026-00035",
+        "INV-2026-00036",
+        "INV-2026-00037",
+        "INV-2026-00038",
+        "INV-2026-00039",
+        "INV-2026-00040",
+        "INV-2026-00041",
+        "INV-2026-00042"
+      ],
+      "net_expected_paise": 2259597,
+      "settlement_date": "2026-03-06"
+    },
+    {
+      "anomalies": [],
+      "bank_ids": [
+        "TR72ABD2325E"
+      ],
+      "components": {
+        "fee_mdr": -36349,
+        "gst_on_fee": -6543,
+        "tds_194o": -3293
+      },
+      "gateway_ids": [
+        "pay_601010000086",
+        "pay_601010000088",
+        "pay_601010000090",
+        "pay_601010000092",
+        "pay_601010000094",
+        "pay_601010000096",
+        "pay_601010000098",
+        "pay_601010000100",
+        "pay_601010000102",
+        "pay_601010000104",
+        "pay_601010000106",
+        "pay_601010000109",
+        "pay_601010000111",
+        "pay_601010000113"
+      ],
+      "gross_paise": 3291293,
+      "group_id": "setl_601010000492",
+      "ledger_ids": [
+        "INV-2026-00043",
+        "INV-2026-00044",
+        "INV-2026-00045",
+        "INV-2026-00046",
+        "INV-2026-00047",
+        "INV-2026-00048",
+        "INV-2026-00049",
+        "INV-2026-00050",
+        "INV-2026-00051",
+        "INV-2026-00052",
+        "INV-2026-00053",
+        "INV-2026-00054",
+        "INV-2026-00055",
+        "INV-2026-00056"
+      ],
+      "net_expected_paise": 3245108,
+      "settlement_date": "2026-03-07"
+    },
+    {
+      "anomalies": [
+        "rolling_reserve",
+        "timing"
+      ],
+      "bank_ids": [
+        "TR1EA388032B"
+      ],
+      "components": {
+        "fee_mdr": -30820,
+        "gst_on_fee": -5548,
+        "rolling_reserve": -202131,
+        "tds_194o": -4043
+      },
+      "gateway_ids": [
+        "pay_601010000115",
+        "pay_601010000117",
+        "pay_601010000119",
+        "pay_601010000122",
+        "pay_601010000124",
+        "pay_601010000126",
+        "pay_601010000128",
+        "pay_601010000130",
+        "pay_601010000133",
+        "pay_601010000135",
+        "pay_601010000137",
+        "pay_601010000139",
+        "pay_601010000141",
+        "pay_601010000143"
+      ],
+      "gross_paise": 4042629,
+      "group_id": "setl_601010000493",
+      "ledger_ids": [
+        "INV-2026-00057",
+        "INV-2026-00058",
+        "INV-2026-00059",
+        "INV-2026-00060",
+        "INV-2026-00061",
+        "INV-2026-00062",
+        "INV-2026-00063",
+        "INV-2026-00064",
+        "INV-2026-00065",
+        "INV-2026-00066",
+        "INV-2026-00067",
+        "INV-2026-00068",
+        "INV-2026-00069",
+        "INV-2026-00070"
+      ],
+      "net_expected_paise": 3800087,
+      "settlement_date": "2026-03-10"
+    },
+    {
+      "anomalies": [
+        "refund_offset"
+      ],
+      "bank_ids": [
+        "TR8DB839FA6A"
+      ],
+      "components": {
+        "fee_mdr": -19999,
+        "gst_on_fee": -3600,
+        "refund_offset": -33088,
+        "tds_194o": -2663
+      },
+      "gateway_ids": [
+        "pay_601010000145",
+        "pay_601010000147",
+        "pay_601010000149",
+        "pay_601010000151",
+        "pay_601010000154",
+        "pay_601010000156",
+        "pay_601010000158",
+        "pay_601010000160",
+        "pay_601010000162",
+        "pay_601010000164",
+        "pay_601010000166",
+        "pay_601010000168",
+        "pay_601010000170",
+        "pay_601010000172"
+      ],
+      "gross_paise": 2663456,
+      "group_id": "setl_601010000494",
+      "ledger_ids": [
+        "INV-2026-00071",
+        "INV-2026-00072",
+        "INV-2026-00073",
+        "INV-2026-00074",
+        "INV-2026-00075",
+        "INV-2026-00076",
+        "INV-2026-00077",
+        "INV-2026-00078",
+        "INV-2026-00079",
+        "INV-2026-00080",
+        "INV-2026-00081",
+        "INV-2026-00082",
+        "INV-2026-00083",
+        "INV-2026-00084"
+      ],
+      "net_expected_paise": 2604106,
+      "settlement_date": "2026-03-10"
+    },
+    {
+      "anomalies": [
+        "refund_offset"
+      ],
+      "bank_ids": [
+        "TR0F8EA23E5E"
+      ],
+      "components": {
+        "fee_mdr": -14205,
+        "gst_on_fee": -2557,
+        "refund_offset": -220216,
+        "tds_194o": -2608
+      },
+      "gateway_ids": [
+        "pay_601010000174",
+        "pay_601010000176",
+        "pay_601010000178",
+        "pay_601010000180",
+        "pay_601010000182",
+        "pay_601010000184",
+        "pay_601010000186",
+        "pay_601010000188",
+        "pay_601010000191",
+        "pay_601010000193",
+        "pay_601010000195",
+        "pay_601010000197",
+        "pay_601010000199",
+        "pay_601010000201"
+      ],
+      "gross_paise": 2607681,
+      "group_id": "setl_601010000495",
+      "ledger_ids": [
+        "INV-2026-00085",
+        "INV-2026-00086",
+        "INV-2026-00087",
+        "INV-2026-00088",
+        "INV-2026-00089",
+        "INV-2026-00090",
+        "INV-2026-00091",
+        "INV-2026-00092",
+        "INV-2026-00093",
+        "INV-2026-00094",
+        "INV-2026-00095",
+        "INV-2026-00096",
+        "INV-2026-00097",
+        "INV-2026-00098"
+      ],
+      "net_expected_paise": 2368095,
+      "settlement_date": "2026-03-11"
+    },
+    {
+      "anomalies": [
+        "refund_offset",
+        "short_pay"
+      ],
+      "bank_ids": [
+        "TR26A3E46BC0"
+      ],
+      "components": {
+        "fee_mdr": -21356,
+        "gst_on_fee": -3845,
+        "refund_offset": -600861,
+        "short_pay": -276286,
+        "tds_194o": -2375
+      },
+      "gateway_ids": [
+        "pay_601010000203",
+        "pay_601010000205",
+        "pay_601010000207",
+        "pay_601010000209",
+        "pay_601010000211",
+        "pay_601010000213",
+        "pay_601010000215",
+        "pay_601010000217",
+        "pay_601010000219",
+        "pay_601010000221",
+        "pay_601010000223",
+        "pay_601010000225",
+        "pay_601010000227",
+        "pay_601010000229"
+      ],
+      "gross_paise": 2373660,
+      "group_id": "setl_601010000496",
+      "ledger_ids": [
+        "INV-2026-00099",
+        "INV-2026-00100",
+        "INV-2026-00101",
+        "INV-2026-00102",
+        "INV-2026-00103",
+        "INV-2026-00104",
+        "INV-2026-00105",
+        "INV-2026-00106",
+        "INV-2026-00107",
+        "INV-2026-00108",
+        "INV-2026-00109",
+        "INV-2026-00110",
+        "INV-2026-00111",
+        "INV-2026-00112"
+      ],
+      "net_expected_paise": 1468937,
+      "settlement_date": "2026-03-12"
+    },
+    {
+      "anomalies": [
+        "refund_offset"
+      ],
+      "bank_ids": [
+        "TR82729CD1E1"
+      ],
+      "components": {
+        "fee_mdr": -69011,
+        "gst_on_fee": -12421,
+        "refund_offset": -280456,
+        "tds_194o": -4025
+      },
+      "gateway_ids": [
+        "pay_601010000231",
+        "pay_601010000233",
+        "pay_601010000235",
+        "pay_601010000237",
+        "pay_601010000239",
+        "pay_601010000241",
+        "pay_601010000243",
+        "pay_601010000245",
+        "pay_601010000247",
+        "pay_601010000249",
+        "pay_601010000251",
+        "pay_601010000253",
+        "pay_601010000255",
+        "pay_601010000258"
+      ],
+      "gross_paise": 4027101,
+      "group_id": "setl_601010000497",
+      "ledger_ids": [
+        "INV-2026-00113",
+        "INV-2026-00114",
+        "INV-2026-00115",
+        "INV-2026-00116",
+        "INV-2026-00117",
+        "INV-2026-00118",
+        "INV-2026-00119",
+        "INV-2026-00120",
+        "INV-2026-00121",
+        "INV-2026-00122",
+        "INV-2026-00123",
+        "INV-2026-00124",
+        "INV-2026-00125",
+        "INV-2026-00126"
+      ],
+      "net_expected_paise": 3661188,
+      "settlement_date": "2026-03-13"
+    },
+    {
+      "anomalies": [
+        "fx",
+        "refund_offset"
+      ],
+      "bank_ids": [
+        "TR9387BC8122"
+      ],
+      "components": {
+        "fee_mdr": -6827,
+        "fx": -6419,
+        "gst_on_fee": -1230,
+        "refund_offset": -47588,
+        "tds_194o": -1358
+      },
+      "gateway_ids": [
+        "pay_601010000260",
+        "pay_601010000262",
+        "pay_601010000264",
+        "pay_601010000266",
+        "pay_601010000268",
+        "pay_601010000270",
+        "pay_601010000272",
+        "pay_601010000274",
+        "pay_601010000276",
+        "pay_601010000278",
+        "pay_601010000280",
+        "pay_601010000282",
+        "pay_601010000284",
+        "pay_601010000286"
+      ],
+      "gross_paise": 1358189,
+      "group_id": "setl_601010000498",
+      "ledger_ids": [
+        "INV-2026-00127",
+        "INV-2026-00128",
+        "INV-2026-00129",
+        "INV-2026-00130",
+        "INV-2026-00131",
+        "INV-2026-00132",
+        "INV-2026-00133",
+        "INV-2026-00134",
+        "INV-2026-00135",
+        "INV-2026-00136",
+        "INV-2026-00137",
+        "INV-2026-00138",
+        "INV-2026-00139",
+        "INV-2026-00140"
+      ],
+      "net_expected_paise": 1294767,
+      "settlement_date": "2026-03-16"
+    },
+    {
+      "anomalies": [
+        "split_settlement"
+      ],
+      "bank_ids": [
+        "TR2C007878CE",
+        "TR4E078B8CF6"
+      ],
+      "components": {
+        "fee_mdr": -29194,
+        "gst_on_fee": -5255,
+        "tds_194o": -2562
+      },
+      "gateway_ids": [
+        "pay_601010000288",
+        "pay_601010000290",
+        "pay_601010000292",
+        "pay_601010000294",
+        "pay_601010000296",
+        "pay_601010000298",
+        "pay_601010000300",
+        "pay_601010000302",
+        "pay_601010000304",
+        "pay_601010000306",
+        "pay_601010000308",
+        "pay_601010000310",
+        "pay_601010000312",
+        "pay_601010000314"
+      ],
+      "gross_paise": 2563664,
+      "group_id": "setl_601010000499",
+      "ledger_ids": [
+        "INV-2026-00141",
+        "INV-2026-00142",
+        "INV-2026-00143",
+        "INV-2026-00144",
+        "INV-2026-00145",
+        "INV-2026-00146",
+        "INV-2026-00147",
+        "INV-2026-00148",
+        "INV-2026-00149",
+        "INV-2026-00150",
+        "INV-2026-00151",
+        "INV-2026-00152",
+        "INV-2026-00153",
+        "INV-2026-00154"
+      ],
+      "net_expected_paise": 2526653,
+      "settlement_date": "2026-03-17"
+    },
+    {
+      "anomalies": [],
+      "bank_ids": [
+        "TRDABD752D19"
+      ],
+      "components": {
+        "fee_mdr": -15776,
+        "gst_on_fee": -2840,
+        "tds_194o": -2957
+      },
+      "gateway_ids": [
+        "pay_601010000316",
+        "pay_601010000318",
+        "pay_601010000320",
+        "pay_601010000322",
+        "pay_601010000324",
+        "pay_601010000326",
+        "pay_601010000328",
+        "pay_601010000330",
+        "pay_601010000332",
+        "pay_601010000335",
+        "pay_601010000338",
+        "pay_601010000340",
+        "pay_601010000342",
+        "pay_601010000344"
+      ],
+      "gross_paise": 2957031,
+      "group_id": "setl_601010000500",
+      "ledger_ids": [
+        "INV-2026-00155",
+        "INV-2026-00156",
+        "INV-2026-00157",
+        "INV-2026-00158",
+        "INV-2026-00159",
+        "INV-2026-00160",
+        "INV-2026-00161",
+        "INV-2026-00162",
+        "INV-2026-00163",
+        "INV-2026-00164",
+        "INV-2026-00165",
+        "INV-2026-00166",
+        "INV-2026-00167",
+        "INV-2026-00168"
+      ],
+      "net_expected_paise": 2935458,
+      "settlement_date": "2026-03-18"
+    },
+    {
+      "anomalies": [
+        "missing_in_bank"
+      ],
+      "bank_ids": [],
+      "components": {
+        "fee_mdr": -75626,
+        "gst_on_fee": -13614,
+        "tds_194o": -4441
+      },
+      "gateway_ids": [
+        "pay_601010000346",
+        "pay_601010000348",
+        "pay_601010000350",
+        "pay_601010000352",
+        "pay_601010000354",
+        "pay_601010000356",
+        "pay_601010000358",
+        "pay_601010000360",
+        "pay_601010000362",
+        "pay_601010000364",
+        "pay_601010000366",
+        "pay_601010000368",
+        "pay_601010000370",
+        "pay_601010000372"
+      ],
+      "gross_paise": 4437419,
+      "group_id": "setl_601010000501",
+      "ledger_ids": [
+        "INV-2026-00169",
+        "INV-2026-00170",
+        "INV-2026-00171",
+        "INV-2026-00172",
+        "INV-2026-00173",
+        "INV-2026-00174",
+        "INV-2026-00175",
+        "INV-2026-00176",
+        "INV-2026-00177",
+        "INV-2026-00178",
+        "INV-2026-00179",
+        "INV-2026-00180",
+        "INV-2026-00181",
+        "INV-2026-00182"
+      ],
+      "net_expected_paise": 4343738,
+      "settlement_date": "2026-03-19"
+    },
+    {
+      "anomalies": [
+        "timing"
+      ],
+      "bank_ids": [
+        "TRCA704C48B0"
+      ],
+      "components": {
+        "fee_mdr": -22117,
+        "gst_on_fee": -3981,
+        "tds_194o": -2997
+      },
+      "gateway_ids": [
+        "pay_601010000375",
+        "pay_601010000377",
+        "pay_601010000379",
+        "pay_601010000381",
+        "pay_601010000383",
+        "pay_601010000386",
+        "pay_601010000388",
+        "pay_601010000390",
+        "pay_601010000392",
+        "pay_601010000394",
+        "pay_601010000396",
+        "pay_601010000398",
+        "pay_601010000400",
+        "pay_601010000402"
+      ],
+      "gross_paise": 2996032,
+      "group_id": "setl_601010000502",
+      "ledger_ids": [
+        "INV-2026-00183",
+        "INV-2026-00184",
+        "INV-2026-00185",
+        "INV-2026-00186",
+        "INV-2026-00187",
+        "INV-2026-00188",
+        "INV-2026-00189",
+        "INV-2026-00190",
+        "INV-2026-00191",
+        "INV-2026-00192",
+        "INV-2026-00193",
+        "INV-2026-00194",
+        "INV-2026-00195",
+        "INV-2026-00196"
+      ],
+      "net_expected_paise": 2966937,
+      "settlement_date": "2026-03-21"
+    },
+    {
+      "anomalies": [
+        "refund_offset"
+      ],
+      "bank_ids": [
+        "TR04DB2D60F6"
+      ],
+      "components": {
+        "fee_mdr": -14369,
+        "gst_on_fee": -2586,
+        "refund_offset": -140141,
+        "tds_194o": -4130
+      },
+      "gateway_ids": [
+        "pay_601010000404",
+        "pay_601010000406",
+        "pay_601010000408",
+        "pay_601010000410",
+        "pay_601010000412",
+        "pay_601010000414",
+        "pay_601010000416",
+        "pay_601010000418",
+        "pay_601010000420",
+        "pay_601010000422",
+        "pay_601010000424",
+        "pay_601010000426",
+        "pay_601010000428",
+        "pay_601010000430"
+      ],
+      "gross_paise": 4129048,
+      "group_id": "setl_601010000503",
+      "ledger_ids": [
+        "INV-2026-00197",
+        "INV-2026-00198",
+        "INV-2026-00199",
+        "INV-2026-00200",
+        "INV-2026-00201",
+        "INV-2026-00202",
+        "INV-2026-00203",
+        "INV-2026-00204",
+        "INV-2026-00205",
+        "INV-2026-00206",
+        "INV-2026-00207",
+        "INV-2026-00208",
+        "INV-2026-00209",
+        "INV-2026-00210"
+      ],
+      "net_expected_paise": 3967822,
+      "settlement_date": "2026-03-21"
+    },
+    {
+      "anomalies": [
+        "refund_offset"
+      ],
+      "bank_ids": [
+        "TR7C8600E340"
+      ],
+      "components": {
+        "fee_mdr": -13814,
+        "gst_on_fee": -2485,
+        "refund_offset": -78528,
+        "tds_194o": -2377
+      },
+      "gateway_ids": [
+        "pay_601010000432",
+        "pay_601010000434",
+        "pay_601010000436",
+        "pay_601010000438",
+        "pay_601010000440",
+        "pay_601010000442",
+        "pay_601010000444",
+        "pay_601010000446",
+        "pay_601010000448",
+        "pay_601010000450",
+        "pay_601010000452",
+        "pay_601010000454",
+        "pay_601010000456",
+        "pay_601010000458"
+      ],
+      "gross_paise": 2375952,
+      "group_id": "setl_601010000504",
+      "ledger_ids": [
+        "INV-2026-00211",
+        "INV-2026-00212",
+        "INV-2026-00213",
+        "INV-2026-00214",
+        "INV-2026-00215",
+        "INV-2026-00216",
+        "INV-2026-00217",
+        "INV-2026-00218",
+        "INV-2026-00219",
+        "INV-2026-00220",
+        "INV-2026-00221",
+        "INV-2026-00222",
+        "INV-2026-00223",
+        "INV-2026-00224"
+      ],
+      "net_expected_paise": 2278748,
+      "settlement_date": "2026-03-23"
+    },
+    {
+      "anomalies": [],
+      "bank_ids": [
+        "TR7BCFDF3466"
+      ],
+      "components": {
+        "fee_mdr": -21138,
+        "gst_on_fee": -3805,
+        "tds_194o": -2029
+      },
+      "gateway_ids": [
+        "pay_601010000460",
+        "pay_601010000463",
+        "pay_601010000465",
+        "pay_601010000467",
+        "pay_601010000469",
+        "pay_601010000471",
+        "pay_601010000473",
+        "pay_601010000475",
+        "pay_601010000477",
+        "pay_601010000479",
+        "pay_601010000481",
+        "pay_601010000483",
+        "pay_601010000485",
+        "pay_601010000488"
+      ],
+      "gross_paise": 2027730,
+      "group_id": "setl_601010000505",
+      "ledger_ids": [
+        "INV-2026-00225",
+        "INV-2026-00226",
+        "INV-2026-00227",
+        "INV-2026-00228",
+        "INV-2026-00229",
+        "INV-2026-00230",
+        "INV-2026-00231",
+        "INV-2026-00232",
+        "INV-2026-00233",
+        "INV-2026-00234",
+        "INV-2026-00235",
+        "INV-2026-00236",
+        "INV-2026-00237",
+        "INV-2026-00238"
+      ],
+      "net_expected_paise": 2000758,
+      "settlement_date": "2026-03-24"
+    },
+    {
+      "anomalies": [
+        "rolling_reserve"
+      ],
+      "bank_ids": [
+        "TRDA3BB1BC0A"
+      ],
+      "components": {
+        "rolling_reserve": 202131
+      },
+      "gateway_ids": [],
+      "gross_paise": 0,
+      "group_id": "release-2026-03-09",
+      "ledger_ids": [],
+      "net_expected_paise": 202131,
+      "settlement_date": "2026-03-16"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -417808
+      },
+      "gateway_ids": [
+        "pay_601010000002-dup"
+      ],
+      "gross_paise": 417808,
+      "group_id": "dup-pay_601010000002",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-04"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -113927
+      },
+      "gateway_ids": [
+        "pay_601010000048-dup"
+      ],
+      "gross_paise": 113927,
+      "group_id": "dup-pay_601010000048",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-05"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -787197
+      },
+      "gateway_ids": [
+        "pay_601010000094-dup"
+      ],
+      "gross_paise": 787197,
+      "group_id": "dup-pay_601010000094",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-07"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -108267
+      },
+      "gateway_ids": [
+        "pay_601010000143-dup"
+      ],
+      "gross_paise": 108267,
+      "group_id": "dup-pay_601010000143",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-09"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -133696
+      },
+      "gateway_ids": [
+        "pay_601010000191-dup"
+      ],
+      "gross_paise": 133696,
+      "group_id": "dup-pay_601010000191",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-11"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -1075074
+      },
+      "gateway_ids": [
+        "pay_601010000237-dup"
+      ],
+      "gross_paise": 1075074,
+      "group_id": "dup-pay_601010000237",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-13"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -46090
+      },
+      "gateway_ids": [
+        "pay_601010000284-dup"
+      ],
+      "gross_paise": 46090,
+      "group_id": "dup-pay_601010000284",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-16"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -69816
+      },
+      "gateway_ids": [
+        "pay_601010000330-dup"
+      ],
+      "gross_paise": 69816,
+      "group_id": "dup-pay_601010000330",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-18"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -116922
+      },
+      "gateway_ids": [
+        "pay_601010000379-dup"
+      ],
+      "gross_paise": 116922,
+      "group_id": "dup-pay_601010000379",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-20"
+    },
+    {
+      "anomalies": [
+        "duplicate"
+      ],
+      "bank_ids": [],
+      "components": {
+        "duplicate": -229531
+      },
+      "gateway_ids": [
+        "pay_601010000426-dup"
+      ],
+      "gross_paise": 229531,
+      "group_id": "dup-pay_601010000426",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-21"
+    },
+    {
+      "anomalies": [
+        "missing_in_ledger"
+      ],
+      "bank_ids": [
+        "TR75D27A984C"
+      ],
+      "components": {
+        "missing_in_ledger": 167006
+      },
+      "gateway_ids": [],
+      "gross_paise": 0,
+      "group_id": "orphan-274000517685",
+      "ledger_ids": [],
+      "net_expected_paise": 167006,
+      "settlement_date": "2026-03-06"
+    },
+    {
+      "anomalies": [
+        "corrupt_row"
+      ],
+      "bank_ids": [
+        "TR71925B2609"
+      ],
+      "components": {},
+      "gateway_ids": [],
+      "gross_paise": 0,
+      "group_id": "corrupt-0",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-02"
+    },
+    {
+      "anomalies": [
+        "corrupt_row"
+      ],
+      "bank_ids": [
+        "TRCF69DEBE3D"
+      ],
+      "components": {},
+      "gateway_ids": [],
+      "gross_paise": 0,
+      "group_id": "corrupt-1",
+      "ledger_ids": [],
+      "net_expected_paise": 0,
+      "settlement_date": "2026-03-02"
+    },
+    {
+      "anomalies": [
+        "unknown"
+      ],
+      "bank_ids": [
+        "TRCC52758ABE"
+      ],
+      "components": {
+        "unknown": 386692
+      },
+      "gateway_ids": [],
+      "gross_paise": 0,
+      "group_id": "unknown-0",
+      "ledger_ids": [],
+      "net_expected_paise": 386692,
+      "settlement_date": "2026-03-05"
+    }
+  ],
+  "spec": {
+    "anomaly_rates": {
+      "chargeback_hold": "0.06",
+      "corrupt_row": "0.03",
+      "duplicate": "0.04",
+      "fx": "0.03",
+      "missing_in_bank": "0.03",
+      "missing_in_ledger": "0.03",
+      "over_pay": "0.03",
+      "rolling_reserve": "0.08",
+      "short_pay": "0.05",
+      "split_settlement": "0.06",
+      "timing": "0.1",
+      "unknown": "0.02"
+    },
+    "days": 21,
+    "name": "seed",
+    "payments_per_day": 14,
+    "refund_rate": "0.055",
+    "seed": 20260101,
+    "settlement_cycle_days": 2,
+    "start": "2026-03-02"
+  }
+}

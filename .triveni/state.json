@@ -1,5 +1,5 @@
 {
-  "milestone": "M5",
+  "milestone": "M6",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -7,7 +7,8 @@
     "M1",
     "M2",
     "M3",
-    "M4"
+    "M4",
+    "M5"
   ],
   "blocked": null,
   "notes": [
@@ -16,13 +17,17 @@
     "M1: money-lint (AST) + hypothesis prove no float can enter a money path, both directions",
     "M2: RFC 6962 Merkle log verified exhaustively (130 sizes vs recursive oracle, 1225 consistency pairs); verify() localises tampering by index AND by tree size",
     "M3: posting requires a cryptographically valid audit receipt (subject-bound); policy engine is total under 300-example property test",
-    "M4: metrics.json is byte-identical across processes and under PYTHONHASHSEED=random; cost model says the selftest fixture is net-negative vs manual, reported not tuned away"
+    "M4: metrics.json is byte-identical across processes and under PYTHONHASHSEED=random; cost model says the selftest fixture is net-negative vs manual, reported not tuned away",
+    "M5: labels generated first, data derived; 4 integrity properties enforced by tests (labels balance, no hint leakage, opaque row ids, recon cannot import truth)"
   ],
   "metrics_snapshot": {
-    "tests": 437,
+    "tests": 465,
     "mypy_strict": "clean",
     "ruff": "clean",
     "money_lint": "pass",
-    "eval_byte_identical": true
+    "eval_byte_identical": true,
+    "seed_rows": 520,
+    "full_rows": 5481,
+    "exception_types_covered": "16/16"
   }
 }
