@@ -123,6 +123,21 @@ TOOLS: Final[list[dict[str, Any]]] = [
         },
     },
     {
+        "name": "ask",
+        "description": (
+            "Answer a question about the reconciled books. Compiles to one of a fixed "
+            "set of hand-written queries over three documented views, executes it, and "
+            "verifies that every numeral in the answer appears in the result. Abstains "
+            "rather than answering when it cannot - which is a normal outcome."
+        ),
+        "mutates": False,
+        "inputSchema": {
+            "type": "object",
+            "properties": {"question": {"type": "string"}},
+            "required": ["question"],
+        },
+    },
+    {
         "name": "verify_audit",
         "description": (
             "Prove the decision log was appended to and not rewritten, between two "
@@ -151,6 +166,7 @@ class TriveniMCP:
     directory: Path = field(default_factory=lambda: ROOT / "data" / "seed")
     clock: Clock = field(default_factory=lambda: FrozenClock.at("2026-04-01 09:00"))
     _cached: Any = None
+    _warehouse: Any = None
 
     # --- discovery ---------------------------------------------------------
     def list_tools(self) -> list[dict[str, Any]]:
@@ -344,6 +360,24 @@ class TriveniMCP:
                 ),
             }
         return forecast_cash(directory=self.directory, horizon_days=horizon_days)
+
+    def _tool_ask(self, question: str) -> dict[str, Any]:
+        """Grounded Q&A. Every figure traced to a row, or no figure at all."""
+        from qa.narrate import answer_question
+        from qa.warehouse import build as build_warehouse
+
+        if getattr(self, "_warehouse", None) is None:
+            self._warehouse = build_warehouse(self._result())
+        answer = answer_question(question, self._warehouse)
+        payload = answer.canonical()
+        payload["ok"] = True
+        payload["rows"] = [
+            dict(zip(answer.columns, row, strict=True)) for row in answer.rows[:20]
+        ]
+        payload["reason"] = (
+            f"{'answered' if answer.answered else 'abstained'}: {answer.reason}"
+        )
+        return payload
 
     def _tool_verify_audit(self, from_size: int = 0, to_size: int = 0) -> dict[str, Any]:
         from core.audit.log import AuditLog

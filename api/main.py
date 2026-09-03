@@ -292,6 +292,35 @@ def resolve_exception(exception_id: str, request: ResolveRequest) -> dict[str, A
 
 
 # --------------------------------------------------------------------------- #
+# Grounded Q&A
+# --------------------------------------------------------------------------- #
+@app.get("/ask", tags=["explain"])
+def ask(question: str = Query(description="a question about the reconciled books")) -> dict[str, Any]:
+    """Answer from reconciled data, or abstain and show the table.
+
+    An abstention is a 200, not an error: "I cannot answer that from the data" is a
+    correct response, and returning it as a failure would push a caller toward
+    retrying until something came back.
+    """
+    return _server.call("ask", {"question": question})
+
+
+@app.get("/ask/catalogue", tags=["explain"])
+def ask_catalogue() -> dict[str, Any]:
+    """What can be asked, so the UI's empty state can teach rather than guess."""
+    from qa.compile import catalogue as query_catalogue
+
+    return {
+        "answerable": query_catalogue(),
+        "note": (
+            "Triveni answers from three documented views. It selects a hand-written "
+            "query rather than generating SQL, and every numeral in an answer is "
+            "checked against the rows the query returned."
+        ),
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Audit
 # --------------------------------------------------------------------------- #
 @app.get("/audit/verify", tags=["audit"])

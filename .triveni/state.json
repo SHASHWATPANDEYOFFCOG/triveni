@@ -1,5 +1,5 @@
 {
-  "milestone": "M15",
+  "milestone": "M16",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -17,7 +17,8 @@
     "M11",
     "M12",
     "M13",
-    "M14"
+    "M14",
+    "M15"
   ],
   "blocked": null,
   "notes": [
@@ -43,7 +44,8 @@
     "M13: Razorpay boundary enforced by literal allowlist + import-time assertion + READ_ONLY; offline rail goes through the same gate so it is exercised on the path everyone runs.",
     "M13: forecast_cash reports its own absence rather than fabricating a series until M14 lands.",
     "M14: coverage was 77.4% vs 90% nominal from two errors - residuals taken from data the model trained on, and one pooled residual set sizing every horizon step. True split conformal + per-step calibration fixed both.",
-    "M14: build() went 310s -> 98s after caching calendar features (they were 2/3 of fit time) and sizing HistGBR to 175 rows (max_bins 255 -> 32)."
+    "M14: build() went 310s -> 98s after caching calendar features (they were 2/3 of fit time) and sizing HistGBR to 175 rows (max_bins 255 -> 32).",
+    "M15: the worst Q&A bug was answering with a TRUE number about the wrong question - 'how much did we lose to fraud' matched CASH_TOTAL on 'how much'. A topic gate now runs before any pattern."
   ],
   "metrics_snapshot": {
     "tests": 672,
@@ -68,6 +70,14 @@
       "horizon": 14,
       "history_days": 203,
       "seasonal_drift": "LOSES to naive - published"
+    },
+    "M15": {
+      "adversarial_abstained": "12/12",
+      "answerable_answered": "4/4",
+      "fabricated_figures": 0,
+      "templates": 10,
+      "views": 3,
+      "model_writes_sql": false
     }
   }
 }
