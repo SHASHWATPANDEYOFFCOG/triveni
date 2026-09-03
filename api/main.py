@@ -135,6 +135,7 @@ def root() -> dict[str, Any]:
         "health": "/health",
         "close": "/close",
         "stream": "/close/stream",
+        "dashboard": "/app/",
         "boundaries": {"razorpay": rails_boundary(), "mcp": mcp_boundary()},
     }
 
@@ -345,6 +346,19 @@ def mcp_call(tool: str, arguments: dict[str, Any] | None = None) -> dict[str, An
     if not payload.get("ok") and payload.get("error", "").startswith("no such tool"):
         raise HTTPException(status_code=404, detail=payload["error"])
     return payload
+
+
+# --------------------------------------------------------------------------- #
+# The dashboard
+# --------------------------------------------------------------------------- #
+# Served by the same process that serves the API, which is the whole point of the
+# zero-build decision in ADR 0018: `make run` gives you a working UI with no npm,
+# no bundler and no network. Mounted last so it cannot shadow an API route.
+_WEB = ROOT / "web"
+if _WEB.exists():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/app", StaticFiles(directory=str(_WEB), html=True), name="dashboard")
 
 
 def _sse(event: str, data: dict[str, Any]) -> str:

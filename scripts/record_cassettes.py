@@ -77,12 +77,15 @@ def _answer(kind: str, confidence: float, reason: str, action: str) -> dict[str,
 
 def build(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="record-cassettes")
-    parser.add_argument("--spec", default="seed")
+    parser.add_argument(
+        "--specs",
+        default="seed,full,history",
+        help="comma-separated datasets to record for, in one accumulating pass",
+    )
     args = parser.parse_args(argv)
 
     from recon.pipeline import reconcile
 
-    directory = ROOT / "data" / ("seed" if args.spec == "seed" else f"generated/{args.spec}")
     bundle_path = ROOT / "prompts" / "cassettes" / f"{BUNDLE}.json"
     bundle_path.unlink(missing_ok=True)
 
@@ -93,14 +96,31 @@ def build(argv: list[str] | None = None) -> int:
         # the demo into a rehearsal.
         return stand_in_classification(rendered, rendered)
 
-    gateway = LLMGateway(
-        mode=LLMMode.RECORD, prompts=load_prompts(), stand_in=responder
-    )
-    result = reconcile(directory=directory, llm=gateway)
+    # One gateway across every dataset, so the recordings ACCUMULATE into a single
+    # bundle. Recording per-dataset and writing each time replaced the bundle, which
+    # meant `make bench --full` and the forecast dataset both hit a cassette miss -
+    # the offline guarantee failing loudly, correctly, on data nobody had recorded.
+    gateway = LLMGateway(mode=LLMMode.RECORD, prompts=load_prompts(), stand_in=responder)
 
+    total_residue = 0
+    for spec in [item.strip() for item in args.specs.split(",") if item.strip()]:
+        directory = ROOT / "data" / ("seed" if spec == "seed" else f"generated/{spec}")
+        if not directory.exists():
+            print(f"  skipping {spec}: {directory.relative_to(ROOT)} does not exist")
+            continue
+        before = len(gateway.cassette)
+        result = reconcile(directory=directory, llm=gateway)
+        residue = result.escalation.considered if result.escalation else 0
+        total_residue += residue
+        print(
+            f"  {spec:<9} {len(result.rows):>5} rows · {residue:>3} residue row(s) "
+            f"· +{len(gateway.cassette) - before} new fixture(s)"
+        )
+
+    print()
     print(gateway.report())
     print()
-    print(f"residue rows escalated : {result.escalation.considered if result.escalation else 0}")
+    print(f"residue rows escalated : {total_residue}")
     print(f"denied for injection   : {gateway.meter.denials} (no call made, nothing recorded)")
     print(f"fixtures written       : {len(gateway.cassette)}")
     print(f"  -> {bundle_path.relative_to(ROOT)}")

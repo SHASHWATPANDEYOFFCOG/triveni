@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Triveni · the AI Finance Controller</title>
+    <meta
+      name="description"
+      content="Three ledgers, one balanced set of books, with a statistically guaranteed error bound."
+    />
+    <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./styles/app.css" />
+    <link rel="stylesheet" href="./styles/screens.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%E0%A4%A4%3C/text%3E%3C/svg%3E"
+    />
+    <script>
+      // Applied before first paint so a dark-theme user never sees a light flash.
+      (() => {
+        try {
+          const saved = localStorage.getItem("triveni-theme");
+          if (saved) document.documentElement.dataset.theme = saved;
+        } catch {
+          /* private mode; the media query still gives the right default */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="sr-only" href="#main">Skip to content</a>
+
+    <div class="app">
+      <header class="header">
+        <div class="brand">
+          <span class="devanagari" aria-hidden="true">त्रि</span>
+          <span>Triveni</span>
+          <span class="tagline">three ledgers, one set of books</span>
+        </div>
+
+        <nav class="nav" aria-label="Screens">
+          <button data-screen="confluence" aria-current="page">Confluence</button>
+          <button data-screen="stages">Stages</button>
+          <button data-screen="alpha">α slider</button>
+          <button data-screen="triage">Triage</button>
+          <button data-screen="waterfall">Settlement</button>
+          <button data-screen="forecast">Forecast</button>
+          <button data-screen="audit">Audit</button>
+          <button data-screen="report">Report</button>
+        </nav>
+
+        <div class="header-actions">
+          <button
+            class="btn icon-btn ghost"
+            id="theme-toggle"
+            title="Switch theme"
+            aria-label="Switch between light and dark theme"
+          >
+            <span aria-hidden="true" id="theme-icon">◐</span>
+          </button>
+          <button class="btn ghost icon-btn" id="help-toggle" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">
+            <span aria-hidden="true">?</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="main" id="main" tabindex="-1">
+        <div id="connection" hidden></div>
+
+        <section class="screen" data-screen="confluence" data-active="true" aria-label="The Confluence"></section>
+        <section class="screen" data-screen="stages" aria-label="Stage ladder"></section>
+        <section class="screen" data-screen="alpha" aria-label="Error bound slider"></section>
+        <section class="screen" data-screen="triage" aria-label="Exception triage"></section>
+        <section class="screen" data-screen="waterfall" aria-label="Settlement decomposition"></section>
+        <section class="screen" data-screen="forecast" aria-label="Cash forecast"></section>
+        <section class="screen" data-screen="audit" aria-label="The ledger of record"></section>
+        <section class="screen" data-screen="report" aria-label="Run report"></section>
+      </main>
+    </div>
+
+    <div id="help" class="help-overlay" hidden role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"></div>
+    <div id="live" class="sr-only" aria-live="polite" aria-atomic="false"></div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
