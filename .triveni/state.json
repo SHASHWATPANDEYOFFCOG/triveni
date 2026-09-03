@@ -1,5 +1,5 @@
 {
-  "milestone": "M17",
+  "milestone": "M18",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -19,7 +19,8 @@
     "M13",
     "M14",
     "M15",
-    "M16"
+    "M16",
+    "M17"
   ],
   "blocked": null,
   "notes": [
@@ -48,10 +49,11 @@
     "M14: build() went 310s -> 98s after caching calendar features (they were 2/3 of fit time) and sizing HistGBR to 175 rows (max_bins 255 -> 32).",
     "M15: the worst Q&A bug was answering with a TRUE number about the wrong question - 'how much did we lose to fraud' matched CASH_TOTAL on 'how much'. A topic gate now runs before any pattern.",
     "M16: chose a zero-build vanilla dashboard over Next.js (ADR 0018) - npm install breaks the hard 'runs cold on a clean clone with no network' requirement.",
-    "M16: the parallel screen workflow lost 7/7 agents to a session limit after 2 files landed; finished the remaining 5 inline."
+    "M16: the parallel screen workflow lost 7/7 agents to a session limit after 2 files landed; finished the remaining 5 inline.",
+    "M17: every README figure verified against metrics.json by script; size_the_problem prints a band, not a hero number, because all five inputs are assumptions."
   ],
   "metrics_snapshot": {
-    "tests": 672,
+    "tests": 765,
     "redteam": "13/13",
     "mypy_strict": "clean",
     "ruff": "clean",
@@ -89,6 +91,12 @@
       "build_step": false,
       "themes": 2,
       "assets_serving": "16/16"
+    },
+    "M17": {
+      "demo_seconds": 9.5,
+      "problem_band": "Rs 14,080 - Rs 83.20 L/yr",
+      "problem_base": "Rs 3.46 L/yr",
+      "readme_numbers_verified": "10/10"
     }
   }
 }
