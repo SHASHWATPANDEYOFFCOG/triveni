@@ -1,5 +1,5 @@
 {
-  "milestone": "M18",
+  "milestone": "M19",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -20,7 +20,8 @@
     "M14",
     "M15",
     "M16",
-    "M17"
+    "M17",
+    "M18"
   ],
   "blocked": null,
   "notes": [
@@ -50,7 +51,8 @@
     "M15: the worst Q&A bug was answering with a TRUE number about the wrong question - 'how much did we lose to fraud' matched CASH_TOTAL on 'how much'. A topic gate now runs before any pattern.",
     "M16: chose a zero-build vanilla dashboard over Next.js (ADR 0018) - npm install breaks the hard 'runs cold on a clean clone with no network' requirement.",
     "M16: the parallel screen workflow lost 7/7 agents to a session limit after 2 files landed; finished the remaining 5 inline.",
-    "M17: every README figure verified against metrics.json by script; size_the_problem prints a band, not a hero number, because all five inputs are assumptions."
+    "M17: every README figure verified against metrics.json by script; size_the_problem prints a band, not a hero number, because all five inputs are assumptions.",
+    "M18: video script timed to 5:00 with exact commands and a 'do not say' list; threat model states the demo signing key as a real residual risk."
   ],
   "metrics_snapshot": {
     "tests": 765,
