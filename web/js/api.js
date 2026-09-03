@@ -46,6 +46,7 @@ export const api = {
   health: () => request("/health"),
   root: () => request("/"),
   boundaries: () => request("/boundaries"),
+  costmodel: () => request("/costmodel"),
   close: (date = "2026-03-31", alpha = "0.01") =>
     request(`/close?date=${encodeURIComponent(date)}&alpha=${encodeURIComponent(alpha)}`),
   exceptions: ({ type = "", severity = "", limit = 100 } = {}) =>

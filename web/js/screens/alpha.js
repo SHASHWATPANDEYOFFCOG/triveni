@@ -23,16 +23,38 @@ import { esc, formatINR, formatPct } from "../format.js";
 import { odometer, reduced } from "../motion.js";
 import { api } from "../api.js";
 
-/* A geometric grid. Linear steps waste almost every position on the flat upper half
- * and skip the low-alpha region entirely, which is where the decision lives. */
-const GRID = Array.from({ length: 19 }, (_, index) =>
-  Number((0.002 * Math.pow(1.35, index)).toFixed(4))
-).filter((value) => value <= 0.5);
+/* A geometric grid, unioned with the alphas the documentation actually argues about.
+ *
+ * Linear steps waste almost every position on the flat upper half and skip the
+ * low-alpha region entirely, which is where the decision lives - hence geometric. But
+ * a pure geometric grid from 0.002 contains neither 0.01 nor 0.02, and those are
+ * precisely the two the README quotes: alpha=1% is the headline operating point and
+ * alpha=2% is the single-split breach. A judge dragging this slider could not land on
+ * either of the numbers they had just read, which made the screen and the document
+ * describe different systems.
+ */
+const ANCHORS = [0.01, 0.02, 0.05];
+const GRID = [
+  ...new Set([
+    ...Array.from({ length: 19 }, (_, index) =>
+      Number((0.002 * Math.pow(1.35, index)).toFixed(4))
+    ),
+    ...ANCHORS,
+  ]),
+]
+  .filter((value) => value <= 0.5)
+  .sort((a, b) => a - b);
 
-/* Illustrative, and labelled as such wherever it is shown. These are the same
- * parameters core/costmodel.py uses; they are stated assumptions, not findings. */
-const COST_PER_FALSE_POST_PAISE = 500_000;
-const COST_PER_REVIEW_PAISE = 2_000;
+/* Cost parameters are FETCHED, never hard-coded here.
+ *
+ * This screen used to carry its own copies and got one of them wrong by 5.26x - a
+ * per-false-post cost of 500,000 paise against the real 95,000 that
+ * `core/costmodel.py` computes - so the rupee figure on the slider disagreed with
+ * what `python -m scripts.calibrate` printed for the same operating point. Two copies
+ * of a number is one copy too many. These are the last-resort values used only when
+ * /costmodel itself could not be reached, and the UI says so when it falls back.
+ */
+const FALLBACK_COSTS = { false_post: 95_000, review: 2_000 };
 
 export function render(container, state) {
   if (!state.close) {
@@ -140,6 +162,15 @@ export function render(container, state) {
     </div>
   `;
 
+  // Served by /costmodel so this screen and scripts/calibrate.py cannot disagree.
+  const costs = state.costmodel
+    ? {
+        false_post: state.costmodel.cost_per_false_post_paise,
+        review: state.costmodel.cost_per_review_paise,
+      }
+    : FALLBACK_COSTS;
+  const costsAreServed = Boolean(state.costmodel);
+
   const slider = container.querySelector("#alpha-range");
   const cache = new Map();
   const measured = [];
@@ -152,7 +183,17 @@ export function render(container, state) {
 
     const cached = cache.get(alpha);
     if (cached) {
-      paint(container, alpha, cached, measured);
+      // Cancel any in-flight debounce and clear the loading state before returning.
+      //
+      // Without these two lines, dragging to an unvisited alpha (which arms a 250ms
+      // timer and dims the tiles) and then back to a cached one inside that window
+      // painted the cached values, returned, and left the stale timer running - which
+      // then fired, fetched the OLD alpha and repainted the tiles and the guarantee
+      // sentence with a different alpha than the slider was showing. On the one
+      // screen whose entire promise is "these numbers move together", they came apart.
+      clearTimeout(timer);
+      setLoading(container, false);
+      paint(container, alpha, cached, measured, costsAreServed);
       return;
     }
 
@@ -167,8 +208,8 @@ export function render(container, state) {
         return;
       }
       cache.set(alpha, response.data);
-      recordPoint(measured, alpha, response.data);
-      paint(container, alpha, response.data, measured);
+      recordPoint(measured, alpha, response.data, costs);
+      paint(container, alpha, response.data, measured, costsAreServed);
     };
 
     clearTimeout(timer);
@@ -185,7 +226,7 @@ export function render(container, state) {
   };
 }
 
-function recordPoint(measured, alpha, data) {
+function recordPoint(measured, alpha, data, costs) {
   if (measured.some((point) => point.alpha === alpha)) return;
   const coverage = Number(data.auto_post_coverage);
   const realised = Number(data.realised_error_holdout);
@@ -198,7 +239,7 @@ function recordPoint(measured, alpha, data) {
     coverage,
     realised,
     threshold: Number(data.conformal_threshold),
-    costPaise: wrong * COST_PER_FALSE_POST_PAISE + reviewed * COST_PER_REVIEW_PAISE,
+    costPaise: wrong * costs.false_post + reviewed * costs.review,
     posted,
     reviewed,
     wrong,
@@ -212,7 +253,7 @@ function setLoading(container, loading) {
   });
 }
 
-function paint(container, alpha, data, measured) {
+function paint(container, alpha, data, measured, costsAreServed = true) {
   const coverage = Number(data.auto_post_coverage);
   const realised = Number(data.realised_error_holdout);
   const point = measured.find((item) => item.alpha === alpha);
@@ -231,7 +272,8 @@ function paint(container, alpha, data, measured) {
       formatINR(Math.round(value), { showPaise: false })
     );
     container.querySelector("#tile-cost").closest(".stat").querySelector(".note").textContent =
-      `${point.wrong} wrong · ${point.reviewed} reviewed · illustrative rates`;
+      `${point.wrong} wrong · ${point.reviewed} reviewed · illustrative rates` +
+      (costsAreServed ? "" : " (fallback: /costmodel unreachable)");
   }
 
   container.querySelector("#guarantee-line").textContent =

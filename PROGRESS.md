@@ -2,8 +2,8 @@
 
 Human-readable mirror of `.triveni/state.json`. Rewritten every loop iteration.
 
-**Current milestone:** M2 — Merkle audit log + inclusion/consistency proofs + `make verify`
-**Status:** starting
+**Current milestone:** COMPLETE — M0 through M19 all green.
+**Status:** 837 tests · mypy --strict clean · ruff clean · money-lint clean · redteam 13/13 · QA 12+4/16
 **Blocked:** none
 
 ## Environment resolved (2026-09-02)

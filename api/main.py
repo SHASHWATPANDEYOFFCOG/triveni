@@ -140,6 +140,39 @@ def root() -> dict[str, Any]:
     }
 
 
+@app.get("/costmodel", tags=["meta"])
+def costmodel() -> dict[str, Any]:
+    """The cost parameters, served rather than duplicated.
+
+    The dashboard used to hard-code these. It got one of them wrong by 5.26x - a
+    per-false-post cost of 500,000 paise against the real 95,000 - so the alpha
+    slider's rupee figure disagreed with what `python -m scripts.calibrate` printed
+    for the same operating point. Two copies of a number is one copy too many, and
+    the README's own rule is that every figure comes from a script in this repo.
+
+    Every value here is a *stated illustrative assumption*, and each carries its own
+    provenance string saying so.
+    """
+    from core.costmodel import CostModel
+    from core.money import Money
+
+    model = CostModel()
+    exposure = Money.from_rupees("10000")
+    return {
+        "cost_per_false_post_paise": model.cost_per_false_match(exposure).paise,
+        "cost_per_review_paise": model.cost_per_review().paise,
+        "cost_per_missed_paise": model.cost_per_false_non_match().paise,
+        "exposure_basis_paise": exposure.paise,
+        "assumptions": [a.canonical() for a in model.assumptions()],
+        "note": (
+            "Illustrative assumptions, not sourced findings. cost_per_false_post is "
+            "unwinding labour plus an unrecovered share of the exposed amount, so it "
+            "depends on exposure - the figure here uses a Rs 10,000 basis, which is "
+            "what scripts/calibrate.py uses."
+        ),
+    }
+
+
 @app.get("/boundaries", tags=["meta"])
 def boundaries() -> dict[str, Any]:
     """What Triveni may and may not do, generated from the code that enforces it.

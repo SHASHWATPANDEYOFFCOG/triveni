@@ -38,6 +38,7 @@ const state = {
   close: null,
   exceptions: [],
   boundaries: null,
+  costmodel: null,
   health: null,
   loaded: false,
   error: "",
@@ -60,17 +61,19 @@ async function boot() {
 }
 
 async function load() {
-  const [health, close, exceptions, boundaries] = await Promise.all([
+  const [health, close, exceptions, boundaries, costmodel] = await Promise.all([
     api.health(),
     api.close(state.date, state.alpha),
     api.exceptions({ limit: 200 }),
     api.boundaries(),
+    api.costmodel(),
   ]);
 
   state.health = health.ok ? health.data : null;
   state.close = close.ok ? close.data : null;
   state.exceptions = exceptions.ok ? exceptions.data : [];
   state.boundaries = boundaries.ok ? boundaries.data : null;
+  state.costmodel = costmodel.ok ? costmodel.data : null;
   state.loaded = true;
   state.error = close.ok ? "" : close.error;
 

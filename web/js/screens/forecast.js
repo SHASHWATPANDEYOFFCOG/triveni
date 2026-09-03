@@ -99,7 +99,7 @@ export function render(container, state, helpers = {}) {
       </div>
     </div>
 
-    <div id="fc-body">${offline ? paintOffline(state.error) : paintPrimed()}</div>
+    <div id="fc-body">${offline ? paintUnreachable(state.error) : paintPrimed()}</div>
   `;
 
   const body = container.querySelector("#fc-body");
@@ -461,13 +461,21 @@ function buildChart(intervals, alerts, coverage) {
   const y = (value) => CHART.top + height * (1 - (value - low) / spread);
 
   const line = (pick) => rows.map((row, index) => `${x(index)},${y(pick(row))}`).join(" L ");
-  const band =
-    `M ${rows.map((row, index) => `${x(index)},${y(row.upper)}`).join(" L ")} ` +
-    `L ${rows
-      .map((row, index) => `${x(rows.length - 1 - index)},${y(row.lower)}`)
-      .reverse()
-      .reverse()
-      .join(" L ")} Z`;
+  // Out along the upper edge, back along the lower one. Each point uses its OWN
+  // x-position and the *order* is reversed exactly once to close the path.
+  //
+  // This previously mapped row i to x(n-1-i) and then called .reverse().reverse(),
+  // which is the identity - so row 0's lower bound was plotted in the last column
+  // and row n-1's in the first. Because the cumulative lower bound rises
+  // monotonically, the drawn floor fell while the ceiling rose and the "band" was a
+  // crossed wedge with the lower-bound line sitting outside it. On the one screen
+  // whose entire argument is "the alert measures from the lower bound", that made
+  // the shaded region misrepresent the data.
+  const upperEdge = rows.map((row, index) => `${x(index)},${y(row.upper)}`);
+  const lowerEdge = rows
+    .map((row, index) => `${x(index)},${y(row.lower)}`)
+    .reverse();
+  const band = `M ${upperEdge.join(" L ")} L ${lowerEdge.join(" L ")} Z`;
 
   const ticks = Array.from({ length: 5 }, (_, step) => low + (spread * step) / 4);
   // With 14 columns every label collides; label roughly seven of them and let the

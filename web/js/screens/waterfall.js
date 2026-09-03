@@ -323,7 +323,12 @@ function normalise(raw) {
     netExpected: paise("net_expected_paise", "net_expected"),
     netReceived: paise("net_received_paise", "net_received"),
     residual: paise("residual_paise", "residual"),
-    balanced: raw.balanced !== false,
+    // `!== false` made an ABSENT field read as balanced, so a payload that omitted
+    // or renamed it stamped a green "balanced to Rs 0" seal over books that might be
+    // short by real money - and suppressed the route to triage. Defaulting to false
+    // is the only safe direction here: an unbalanced settlement wrongly flagged
+    // costs a glance, a short one wrongly cleared costs the merchant.
+    balanced: raw.balanced === true,
   };
 }
 
@@ -430,8 +435,14 @@ function gstCallout(wf) {
 
 function seal(wf) {
   if (wf.balanced) {
-    return `<span class="seal" data-ok="true"><span aria-hidden="true">✓</span> balanced to ${formatINR(
-      0
+    // The RESIDUAL, not a literal zero. Printing formatINR(0) meant the seal said
+    // "balanced to ₹0.00" whether or not it was - the one figure on this screen that
+    // must never be decorative, since the entire claim of Loop 2 is that the
+    // waterfall closes to the paise. If a rounding-slack residual ever survives the
+    // balanced check, it belongs on screen rather than papered over.
+    const closed = wf.residual === null ? 0 : wf.residual;
+    return `<span class="seal" data-ok="true"><span aria-hidden="true">✓</span> balanced to ${esc(
+      formatINR(closed)
     )}</span>
     <span class="subtle">gross less every named component lands exactly on what the bank credited.</span>`;
   }

@@ -1,6 +1,6 @@
 {
-  "milestone": "M19",
-  "status": "starting",
+  "milestone": "COMPLETE",
+  "status": "green",
   "attempts": 0,
   "green": [
     "M0",
@@ -21,7 +21,8 @@
     "M15",
     "M16",
     "M17",
-    "M18"
+    "M18",
+    "M19"
   ],
   "blocked": null,
   "notes": [
@@ -52,10 +53,12 @@
     "M16: chose a zero-build vanilla dashboard over Next.js (ADR 0018) - npm install breaks the hard 'runs cold on a clean clone with no network' requirement.",
     "M16: the parallel screen workflow lost 7/7 agents to a session limit after 2 files landed; finished the remaining 5 inline.",
     "M17: every README figure verified against metrics.json by script; size_the_problem prints a band, not a hero number, because all five inputs are assumptions.",
-    "M18: video script timed to 5:00 with exact commands and a 'do not say' list; threat model states the demo signing key as a real residual risk."
+    "M18: video script timed to 5:00 with exact commands and a 'do not say' list; threat model states the demo signing key as a real residual risk.",
+    "M19: adversarial review found 5 real UI defects incl. an undefined function on the failure path; root cause was zero tests for web/. tests/test_dashboard.py added and proven non-vacuous by reintroducing the bug.",
+    "M19: the flaky canonical_json test was a Hypothesis LATENCY deadline on a LOGICAL property, not a real instability - 200k values show zero."
   ],
   "metrics_snapshot": {
-    "tests": 765,
+    "tests": 837,
     "redteam": "13/13",
     "mypy_strict": "clean",
     "ruff": "clean",
@@ -99,6 +102,18 @@
       "problem_band": "Rs 14,080 - Rs 83.20 L/yr",
       "problem_base": "Rs 3.46 L/yr",
       "readme_numbers_verified": "10/10"
+    },
+    "M19": {
+      "review_scores": {
+        "problem_taste": 4,
+        "build_quality": 4,
+        "ai_judgment": 5,
+        "failure_recovery": 5,
+        "craft_ui": 4
+      },
+      "adversarial_findings": 5,
+      "all_fixed": true,
+      "dashboard_tests_added": 72
     }
   }
 }
