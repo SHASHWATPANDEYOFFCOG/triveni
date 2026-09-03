@@ -233,9 +233,43 @@ def evaluate_pipeline(
         higher_is_better=False,
     )
     registry.count(
-        "llm_calls_absolute",
+        "narration_llm_calls",
         llm_needed,
-        description=f"model calls required across all {total_rows} ingested rows",
+        description=(
+            "bank narrations a regex could not parse, so a model had to. NOT the total "
+            "model calls - see rows_reaching_model and residue_llm_calls below"
+        ),
+        higher_is_better=False,
+    )
+    # The number that actually answers "how much does this system lean on a model".
+    #
+    # An earlier version reported only the narration figure under the name
+    # `llm_calls_absolute` with the description "model calls across all 536 rows",
+    # and the README repeated it as "1 model call across 536 rows". That was wrong in
+    # the most embarrassing direction: the residue stage sends 13 rows to a model at 3
+    # samples each, so the true call count is 39. Two different things were being
+    # counted and the flattering one had the general-sounding name.
+    reached = result.escalation.considered if result.escalation else 0
+    registry.count(
+        "rows_reaching_model",
+        reached,
+        description=f"rows that ever touch a model at all, of {total_rows} ingested",
+        higher_is_better=False,
+    )
+    registry.rate(
+        "rows_reaching_model_rate",
+        reached,
+        max(total_rows, 1),
+        description="share of ingested rows that ever touch a model",
+        higher_is_better=False,
+    )
+    registry.count(
+        "residue_llm_calls",
+        result.escalation.calls if result.escalation and hasattr(result.escalation, "calls") else reached * 3,
+        description=(
+            "actual calls the residue stage made - three samples per row, because a "
+            "row abstains unless the decisions agree"
+        ),
         higher_is_better=False,
     )
     registry.count(

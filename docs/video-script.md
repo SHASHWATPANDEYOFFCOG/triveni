@@ -6,11 +6,13 @@ reproducible by the command in the right-hand column. Nothing is a slide of clai
 **Setup before recording**
 
 ```bash
-make setup                              # once
-python -m data.gen --spec history       # once, for the forecast section
-python -m scripts.forecast_report       # once, caches the backtest
-make eval                               # writes metrics.json
-make run                                # leave running on :8000
+make setup     # once
+make eval      # writes metrics.json
+make run       # leave running on :8000
+
+# data/history/ and its cached forecast are committed, so the forecast
+# section works on a clean clone. To regenerate them:
+#   python -m data.gen --spec history && python -m scripts.forecast_report
 ```
 
 Two windows: a terminal (large font, dark) and a browser at
@@ -55,13 +57,14 @@ Point at the band as it prints.
 
 Let the stage log fill. Point at the last two lines.
 
-> Sixteen of sixteen settlements balanced to zero rupees. And one model call. Across all five
-> hundred and thirty-six rows.
+> Sixteen of sixteen settlements balanced to zero rupees. And thirteen rows out of five hundred
+> and thirty-six ever reached a model. Two point four percent.
 
 Pause on that.
 
-> Because ninety-five percent of bank narrations are a *format* — `NEFT-`, a bank code, a
-> UTR. A format is a regex. It is not a prompt.
+> Ninety-five percent of bank narrations are a *format* — `NEFT-`, a bank code, a UTR. A format
+> is a regex. It is not a prompt. Only what survives every deterministic stage goes to a model,
+> and it goes there to be *typed*, not to be matched.
 
 ---
 
@@ -236,6 +239,7 @@ Drop in this order — the three money-shots stay:
 ## Do not say
 
 - "AI-powered reconciliation" — the AI does the *language*; the matching is a solver.
+- "one model call" — it is 13 rows and 39 calls. Say 2.4% of rows, or say both numbers.
 - "99% accurate" — precision is 98.06% and recall is 82.90%. Say both.
 - "It saves you X" — the cost model's parameters are illustrative assumptions. Say so.
 - Anything about the cassettes that implies a live model produced them.

@@ -122,6 +122,13 @@ def main(argv: list[str] | None = None) -> int:
         f"   {GREEN}{result.matched_row_count} of {len(result.rows)} rows placed into "
         f"{len(result.matches)} match groups.{RESET}"
     )
+    reached = result.escalation.considered if result.escalation else 0
+    say(
+        f"   {GREEN}{reached} of {len(result.rows)} rows ever reached a model "
+        f"({reached / max(len(result.rows), 1):.1%}).{RESET}"
+    )
+    note("Each of those is sampled three times and abstains unless the decisions agree,")
+    note("so the honest call count is higher than the row count - see the stage-6 line.")
     note("Each stage may only ADD. A later stage that wants to overwrite an earlier one")
     note("raises a conflict and routes to a human - which is why the ladder is honest.")
     pause(2)

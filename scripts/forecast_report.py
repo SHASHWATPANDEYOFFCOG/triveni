@@ -24,7 +24,7 @@ from core.ids import content_hash
 from forecast.service import build, series_from_reconciliation
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DIR = ROOT / "data" / "generated" / "history"
+DEFAULT_DIR = ROOT / "data" / "history"
 
 
 def report_path(directory: Path = DEFAULT_DIR) -> Path:

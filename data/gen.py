@@ -1008,7 +1008,8 @@ def main(argv: list[str] | None = None) -> int:
             refund_rate=spec.refund_rate,
             anomaly_rates=spec.anomaly_rates,
         )
-    out = args.out or (SEED_DIR if spec.name == "seed" else GENERATED_DIR / spec.name)
+    committed = {"seed": SEED_DIR, "history": ROOT / "data" / "history"}
+    out = args.out or committed.get(spec.name, GENERATED_DIR / spec.name)
 
     dataset = generate(spec)
     dataset.write(out)

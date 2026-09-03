@@ -1,0 +1,168 @@
+{
+  "alerts": [
+    {
+      "commitment": {
+        "amount_paise": 36015152,
+        "due_on": "2026-09-30",
+        "kind": "payroll",
+        "label": "monthly payroll"
+      },
+      "confident_paise": 4062627,
+      "due_on": "2026-09-30",
+      "expected_paise": 19165266,
+      "nominal_coverage": "0.90",
+      "proposal": "Arrange \u20b93,19,525.25 of headroom before 2026-09-30 - an overdraft draw or a delayed discretionary payout. Triveni proposes; a human decides.",
+      "reason": "even the central forecast of \u20b91,91,652.66 falls short of the \u20b93,60,151.52 due; this is not a risk, it is a plan",
+      "severity": "critical",
+      "shortfall_paise": 31952525
+    }
+  ],
+  "backtest": [
+    {
+      "coverage": null,
+      "folds": 6,
+      "mase": "0.836807",
+      "name": "seasonal_naive",
+      "pinball_05": "1034541.932143",
+      "pinball_50": "997704.214286",
+      "pinball_95": "960866.496429"
+    },
+    {
+      "coverage": null,
+      "folds": 6,
+      "mase": "0.927195",
+      "name": "seasonal_drift",
+      "pinball_05": "1096620.064553",
+      "pinball_50": "1105471.58139",
+      "pinball_95": "1114323.098226"
+    },
+    {
+      "coverage": null,
+      "folds": 6,
+      "mase": "0.705847",
+      "name": "theta",
+      "pinball_05": "819186.796103",
+      "pinball_50": "841563.218868",
+      "pinball_95": "863939.641633"
+    },
+    {
+      "coverage": null,
+      "folds": 6,
+      "mase": "0.598456",
+      "name": "ets",
+      "pinball_05": "750452.140746",
+      "pinball_50": "713524.31989",
+      "pinball_95": "676596.499033"
+    },
+    {
+      "coverage": null,
+      "folds": 6,
+      "mase": "0.545644",
+      "name": "boosted",
+      "pinball_05": "123978.163095",
+      "pinball_50": "650557.401652",
+      "pinball_95": "257227.899732"
+    }
+  ],
+  "coverage": {
+    "holds": false,
+    "mean_width_paise": 6531756,
+    "n": 84,
+    "nominal": "0.9000",
+    "realised": "0.8810",
+    "standard_error": "0.0327",
+    "within_noise": true
+  },
+  "history_days": 203,
+  "intervals": [
+    {
+      "date": "2026-09-23",
+      "lower_paise": 755312,
+      "point_paise": 3349580,
+      "upper_paise": 5943849
+    },
+    {
+      "date": "2026-09-24",
+      "lower_paise": 71232,
+      "point_paise": 2665501,
+      "upper_paise": 5259769
+    },
+    {
+      "date": "2026-09-25",
+      "lower_paise": 1192331,
+      "point_paise": 3786599,
+      "upper_paise": 6380867
+    },
+    {
+      "date": "2026-09-26",
+      "lower_paise": 0,
+      "point_paise": 5208,
+      "upper_paise": 2599476
+    },
+    {
+      "date": "2026-09-27",
+      "lower_paise": 0,
+      "point_paise": 5214,
+      "upper_paise": 2599483
+    },
+    {
+      "date": "2026-09-28",
+      "lower_paise": 311870,
+      "point_paise": 2906138,
+      "upper_paise": 5500406
+    },
+    {
+      "date": "2026-09-29",
+      "lower_paise": 1731882,
+      "point_paise": 4326150,
+      "upper_paise": 6920419
+    },
+    {
+      "date": "2026-09-30",
+      "lower_paise": 0,
+      "point_paise": 2120876,
+      "upper_paise": 4715144
+    },
+    {
+      "date": "2026-10-01",
+      "lower_paise": 2573331,
+      "point_paise": 5167599,
+      "upper_paise": 7761867
+    },
+    {
+      "date": "2026-10-02",
+      "lower_paise": 0,
+      "point_paise": 5208,
+      "upper_paise": 2599476
+    },
+    {
+      "date": "2026-10-03",
+      "lower_paise": 1111108,
+      "point_paise": 3705376,
+      "upper_paise": 6299645
+    },
+    {
+      "date": "2026-10-04",
+      "lower_paise": 0,
+      "point_paise": 5208,
+      "upper_paise": 2599476
+    },
+    {
+      "date": "2026-10-05",
+      "lower_paise": 98542,
+      "point_paise": 2692810,
+      "upper_paise": 5287079
+    },
+    {
+      "date": "2026-10-06",
+      "lower_paise": 104118,
+      "point_paise": 2698387,
+      "upper_paise": 5292655
+    }
+  ],
+  "model": "boosted",
+  "regenerate_with": "python -m scripts.forecast_report",
+  "series_digest": "b399921e63b0c3de143a2105a0fada888a4fd10762fcaaeaccf3413eb463cff9",
+  "total_confident_paise": 7949726,
+  "total_expected_paise": 33439854
+}

@@ -43,7 +43,7 @@ from forecast.models import mase, pinball
 from forecast.service import MIN_HISTORY_DAYS, build, forecast_cash, series_from_reconciliation
 
 ROOT = Path(__file__).resolve().parent.parent
-HISTORY = ROOT / "data" / "generated" / "history"
+HISTORY = ROOT / "data" / "history"
 
 
 @pytest.fixture(scope="module")

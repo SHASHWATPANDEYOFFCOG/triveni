@@ -76,7 +76,7 @@ Measured on the committed 536-row seed. `make eval` regenerates all of it and pr
 | settlements balancing to ₹0 | **16 / 16** | rates fitted, R² 0.907 |
 | rupees the waterfall could not explain | **₹2,677.10** | of ₹3,63,433 gross |
 | left for a person | **87** | typed exceptions, each evidenced |
-| **model calls needed, all 536 rows** | **1** | see the next section |
+| rows that ever reach a model | **13 / 536 = 2.4%** | 39 calls — each sampled 3× |
 
 Bootstrap 95% confidence intervals accompany every rate in `metrics.json`. The cost model's
 six parameters are **stated illustrative assumptions**, labelled as such in the code, in the eval
@@ -103,10 +103,19 @@ is the receipt.
 | Answering "why is today's payout short?" | **SQL over verified numbers**, LLM only narrates | numbers come from the database, never the model | [`qa/compile.py`](qa/compile.py), [`qa/narrate.py`](qa/narrate.py) |
 | Forecasting cash | **Model ladder + conformal intervals** | time series is not a chat problem | [`forecast/models.py`](forecast/models.py) |
 
-**The number that makes this checkable: 1 model call across 536 rows.** 95% of bank narrations
-are a *format* — `NEFT-UTIB940235305794-RAZORPAY SOFTWARE PVT LTD-SETTLEMENT` — and a format is a
-regex, not a prompt. Only the residue reaches a model, and the model there **classifies and
-explains; it never picks a match, never computes an amount, never sets a threshold**.
+**The number that makes this checkable: 13 of 536 rows ever reach a model — 2.4%.** Everything
+else is resolved deterministically.
+
+Two separate measurements, and it is worth keeping them apart because conflating them would
+flatter us. **Narration parsing:** exactly **1 of 21** bank narrations needed a model, because 95%
+of them are a *format* — `NEFT-UTIB940235305794-RAZORPAY SOFTWARE PVT LTD-SETTLEMENT` — and a
+format is a regex, not a prompt. **Residue classification:** the 13 rows that survived every
+deterministic stage go to the model to be *typed and explained*. Those 13 rows cost **39 calls**,
+because each is sampled three times and the row abstains unless the *decisions* agree — so the
+honest headline is 39 calls, not 13, and certainly not 1.
+
+In both places the model **classifies and explains; it never picks a match, never computes an
+amount, never sets a threshold**.
 
 ## The guarantee, and what it assumes
 

@@ -121,7 +121,7 @@ def build(
     opening_balance: Money | None = None,
 ) -> Forecast:
     """Run the whole loop. Raises rather than guessing when history is too short."""
-    directory = directory or (ROOT / "data" / "generated" / "history")
+    directory = directory or (ROOT / "data" / "history")
     series = series_from_reconciliation(directory)
     if len(series) < MIN_HISTORY_DAYS:
         raise ValueError(
