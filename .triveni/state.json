@@ -1,5 +1,5 @@
 {
-  "milestone": "M14",
+  "milestone": "M15",
   "status": "starting",
   "attempts": 0,
   "green": [
@@ -16,7 +16,8 @@
     "M10",
     "M11",
     "M12",
-    "M13"
+    "M13",
+    "M14"
   ],
   "blocked": null,
   "notes": [
@@ -40,7 +41,9 @@
     "M12: alpha=2% breaches on a single split but holds in expectation over 40 splits - both reported. Breach rate 32.5% at alpha=2%.",
     "M12: an id-space mismatch made calibration silently fall back to the hard-coded 0.90 it existed to replace, while printing a plausible threshold.",
     "M13: Razorpay boundary enforced by literal allowlist + import-time assertion + READ_ONLY; offline rail goes through the same gate so it is exercised on the path everyone runs.",
-    "M13: forecast_cash reports its own absence rather than fabricating a series until M14 lands."
+    "M13: forecast_cash reports its own absence rather than fabricating a series until M14 lands.",
+    "M14: coverage was 77.4% vs 90% nominal from two errors - residuals taken from data the model trained on, and one pooled residual set sizing every horizon step. True split conformal + per-step calibration fixed both.",
+    "M14: build() went 310s -> 98s after caching calendar features (they were 2/3 of fit time) and sizing HistGBR to 175 rows (max_bins 255 -> 32)."
   ],
   "metrics_snapshot": {
     "tests": 672,
@@ -53,6 +56,18 @@
     "razorpay": {
       "read_tools": 10,
       "write_tools_refused": 11
+    },
+    "M14": {
+      "winner": "boosted",
+      "mase": "0.5456",
+      "vs_naive": "45.4% better",
+      "coverage_nominal": "90.0%",
+      "coverage_realised": "88.1%",
+      "coverage_verdict": "UNDER by 1.9%, inside 1 SE (3.3%)",
+      "folds": 6,
+      "horizon": 14,
+      "history_days": 203,
+      "seasonal_drift": "LOSES to naive - published"
     }
   }
 }

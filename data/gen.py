@@ -165,6 +165,14 @@ SEED_SPEC = DatasetSpec(name="seed", days=21, payments_per_day=14)
 FULL_SPEC = DatasetSpec(name="full", days=60, payments_per_day=55, seed=20260101)
 """~5,000 rows, for the headline metrics and the throughput benchmark."""
 
+HISTORY_SPEC = DatasetSpec(name="history", days=200, payments_per_day=18, seed=20260101)
+"""~200 days, for the forecast backtest.
+
+Long rather than wide: a rolling-origin backtest of a 14-day horizon needs months of
+*days*, and the number of payments per day is almost irrelevant to it. Generating this
+separately keeps the reconciliation datasets the size they should be rather than
+inflating them to serve a different milestone."""
+
 
 # --------------------------------------------------------------------------- #
 # Truth
@@ -982,13 +990,13 @@ def main(argv: list[str] | None = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(prog="make data", description="Generate the 3-source dataset.")
-    parser.add_argument("--spec", choices=["seed", "full"], default="seed")
+    parser.add_argument("--spec", choices=["seed", "full", "history"], default="seed")
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--days", type=int, default=None)
     parser.add_argument("--per-day", type=int, default=None)
     args = parser.parse_args(argv)
 
-    spec = SEED_SPEC if args.spec == "seed" else FULL_SPEC
+    spec = {"seed": SEED_SPEC, "full": FULL_SPEC, "history": HISTORY_SPEC}[args.spec]
     if args.days or args.per_day:
         spec = DatasetSpec(
             name=spec.name,

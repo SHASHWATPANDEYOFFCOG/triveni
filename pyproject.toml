@@ -71,5 +71,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RET", "ARG", "PTH", "TRY", "N"]
 ignore = ["E501", "TRY003", "TRY300", "B008", "SIM108", "N806", "N803", "N818"]
 
 [tool.ruff.lint.per-file-ignores]
+# The stateless forecasters (seasonal naive, drift, Theta) have nothing to fit, but
+# they must still accept `series` and `horizon` to satisfy the Forecaster protocol -
+# that is an interface contract, not dead code, and renaming the parameters would
+# break keyword calls at every site.
+"forecast/models.py" = ["ARG002"]
 "tests/*" = ["ARG", "B", "SIM", "N"]
 "scripts/*" = ["TRY", "ARG"]
