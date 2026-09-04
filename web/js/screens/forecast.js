@@ -826,13 +826,16 @@ function paintLadder(data) {
           </tbody>
         </table>
       </div>
-      <p class="subtle fc-note">
-        MASE and pinball, never MAPE: MAPE is undefined on a zero-cash day and this
-        series is full of structural zeros — every Sunday, every second and fourth
-        Saturday. A metric that cannot be computed on a third of the series is not a
-        metric. A rung that loses to the one-line baseline is published as losing;
-        a ladder where the fanciest model always wins is a ladder nobody should believe.
-      </p>
+      <details class="disclosure fc-note">
+        <summary>Why MASE and pinball, never MAPE</summary>
+        <div class="body">
+          MAPE is undefined on a zero-cash day and this series is full of structural
+          zeros — every Sunday, every second and fourth Saturday. A metric that cannot
+          be computed on a third of the series is not a metric. A rung that loses to
+          the one-line baseline is published as losing; a ladder where the fanciest
+          model always wins is a ladder nobody should believe.
+        </div>
+      </details>
     </div>`;
 }
 

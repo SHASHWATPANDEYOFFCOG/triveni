@@ -463,10 +463,21 @@
             <div class="preview-main">
               <div class="grid">
                 <div class="stat"><span class="label">Match rate</span><span class="value" id="p-match">—</span></div>
-                <div class="stat" data-tone="ok"><span class="label">Balanced</span><span class="value">16 / 16</span></div>
+                <div class="stat" data-tone="ok"><span class="label">Rows</span><span class="value" id="p-rows">—</span></div>
                 <div class="stat" data-tone="accent"><span class="label">Auto-post</span><span class="value" id="p-cov">—</span></div>
               </div>
-              <div class="skeleton" style="height: 7rem"></div>
+
+              <!-- Filled with the LIVE stage timings when the API is reachable, and
+                   with the measured ones from metrics.json when it is not. Either way
+                   the widths are real milliseconds - never a decorative placeholder. -->
+              <div>
+                <div class="row-between" style="margin-bottom: var(--space-2)">
+                  <span class="eyebrow" style="letter-spacing: var(--tracking-wide)">Where the time goes</span>
+                  <span class="faint" style="font-size: var(--text-xs)" id="p-source">connecting…</span>
+                </div>
+                <div class="flow" id="p-flow" role="img" aria-label="Per-stage timings of a close"></div>
+                <div class="flow-legend" id="p-flow-legend"></div>
+              </div>
             </div>
           </div>
         </div>

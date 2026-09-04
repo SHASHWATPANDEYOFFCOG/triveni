@@ -184,7 +184,9 @@ function wireSimulation(container, data, consistency) {
         that corrupts the log. Everything shown below is computed from the real proof
         path above; only the corruption is hypothetical.
       </div>
-      <p class="subtle" style="margin: var(--s-3) 0">
+      <details class="disclosure" style="margin: var(--s-3) 0">
+        <summary>What would happen to record ${victim}</summary>
+        <div class="body">
         If record <strong>${victim}</strong> were rewritten directly in the database,
         bypassing the append-only triggers, it would no longer hash to the leaf the
         tree committed to. Verification would report
@@ -192,7 +194,8 @@ function wireSimulation(container, data, consistency) {
         signed one, and every consistency proof from that point on would fail —
         while the heads signed <em>before</em> it would still verify, which is how the
         log dates the tampering as well as locating it.
-      </p>
+        </div>
+      </details>
       <p class="subtle">Run it for real:</p>
       <div class="cmd-block">${esc(TAMPER_COMMAND)}</div>`;
 

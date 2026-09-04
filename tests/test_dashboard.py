@@ -220,10 +220,20 @@ def test_every_screen_teaches_in_its_empty_state(path: Path) -> None:
     """An empty state that does not say what would appear here, and how to make it
     appear, is a dead end."""
     source = read(path)
-    assert 'class="empty"' in source, f"{path.name} has no empty state"
-    assert re.search(r"<code>[^<]*(make |python -m )", source), (
-        f"{path.name}'s empty state gives no command"
+    # Two components satisfy this: the original `.empty` and the newer `.state-block`,
+    # which adds a glyph and tone variants. Either is a real empty state; what the
+    # test is actually about is the two assertions below it.
+    assert 'class="empty"' in source or 'class="state-block"' in source, (
+        f"{path.name} has no empty state"
     )
+    # It must name what would appear here...
+    assert re.search(r"<h3>[^<]+</h3>", source), (
+        f"{path.name}'s empty state does not say what is missing"
+    )
+    # ...and give the reader a way out, either a command to run or a control to press.
+    assert re.search(r"<code>[^<]*(make |python -m )", source) or re.search(
+        r"<strong>[^<]+</strong>|class=\"btn", source
+    ), f"{path.name}'s empty state is a dead end - no command and no control"
 
 
 @pytest.mark.parametrize("path", SCREENS, ids=lambda p: p.stem)

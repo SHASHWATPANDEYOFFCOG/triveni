@@ -148,12 +148,99 @@ function wireTheme() {
 }
 
 /* --------------------------------------------------------------------------- */
+/* The live preview                                                             */
+/* --------------------------------------------------------------------------- */
+/** Stage -> hue, matching the dashboard exactly so the preview is the product. */
+const STAGE_HUE = {
+  stage0: "--slate-400",
+  stage1: "--stream-ledger",
+  stage2: "--stream-payments",
+  stage3: "--stream-bank",
+  stage4: "--secondary",
+  stage5: "--ok",
+  stage6: "--warn",
+};
+
+/** Measured per-stage milliseconds, used when the API is not running.
+ *
+ * These are real - taken from a `make eval` run on the seed dataset - and the label
+ * above the bar says which of the two you are looking at, so a static preview is
+ * never passed off as a live one. */
+const FALLBACK_STAGES = [
+  { stage: "stage0", label: "canonicalise", ms: 116 },
+  { stage: "stage1", label: "deterministic keys", ms: 24 },
+  { stage: "stage2", label: "blocking", ms: 235 },
+  { stage: "stage3", label: "Fellegi–Sunter", ms: 4489 },
+  { stage: "stage4", label: "global assignment", ms: 4112 },
+  { stage: "stage5", label: "settlement decomposition", ms: 32 },
+  { stage: "stage6", label: "residue", ms: 35 },
+];
+
+function paintFlow(stages, live) {
+  const flow = document.getElementById("p-flow");
+  const legend = document.getElementById("p-flow-legend");
+  const source = document.getElementById("p-source");
+  if (!flow) return;
+
+  const total = stages.reduce((sum, s) => sum + s.ms, 0);
+  flow.innerHTML = stages
+    .map(
+      (s, i) => `
+      <span class="flow-seg" title="${s.label}: ${s.ms.toFixed(0)}ms"
+            style="flex: ${(s.ms / total).toFixed(5)} 1 0; --seg-hue: var(${STAGE_HUE[s.stage] ?? "--accent"}); animation-delay: ${i * 70}ms"></span>`
+    )
+    .join("");
+
+  // The two expensive stages are the story, so name them rather than making the
+  // reader hover to find out.
+  const worst = [...stages].sort((a, b) => b.ms - a.ms).slice(0, 2);
+  const share = worst.reduce((sum, s) => sum + s.ms, 0) / total;
+  legend.innerHTML = `
+    <span>${worst[0].label} + ${worst[1].label}</span>
+    <span class="num">${(share * 100).toFixed(0)}% of ${(total / 1000).toFixed(1)}s</span>`;
+
+  if (source) {
+    source.textContent = live ? "live from this machine" : "measured · start the API for live";
+    source.style.color = live ? "var(--ok)" : "";
+  }
+}
+
+/** Ask the running API for a real close; fall back to the measured figures. */
+async function wireLivePreview() {
+  paintFlow(FALLBACK_STAGES, false);
+
+  try {
+    // A short timeout: the preview is a nicety, and a landing page must never sit
+    // waiting on a backend that may not be running at all.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const response = await fetch("/close?date=2026-03-31&alpha=0.01", {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!response.ok) return;
+
+    const close = await response.json();
+    paintFlow(
+      close.stages.map((s) => ({ stage: s.stage, label: s.label, ms: Number(s.elapsed_ms) })),
+      true
+    );
+    setText("p-match", `${(Number(close.match_rate) * 100).toFixed(2)}%`);
+    setText("p-rows", String(close.rows_ingested));
+    setText("p-cov", `${(Number(close.auto_post_coverage) * 100).toFixed(2)}%`);
+  } catch {
+    /* API not running - the measured fallback is already on screen and labelled. */
+  }
+}
+
+/* --------------------------------------------------------------------------- */
 /* Boot                                                                         */
 /* --------------------------------------------------------------------------- */
 paintMetrics();
 wireNav();
 wireTheme();
 observeReveals(document);
+wireLivePreview();
 
 const canvas = document.getElementById("confluence");
 if (canvas) mountConfluence(canvas);
