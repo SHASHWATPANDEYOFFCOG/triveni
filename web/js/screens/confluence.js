@@ -249,8 +249,24 @@ function renderGauge(node, close) {
       </span>
     </div>
     <div class="metric-grid" style="margin-top: var(--space-4)">
-      <div class="metric"><span class="k">Threshold</span><span class="v">${esc(String(close.conformal_threshold))}</span></div>
-      <div class="metric"><span class="k">Unexplained</span><span class="v">${esc(close.unexplained)}</span></div>
+      <div class="metric">
+        <span class="k">
+          <span class="tip">
+            <span class="term">Threshold</span>
+            <span class="tip-body" role="tooltip">Fitted by split conformal prediction — not chosen</span>
+          </span>
+        </span>
+        <span class="v">${esc(String(close.conformal_threshold))}</span>
+      </div>
+      <div class="metric">
+        <span class="k">
+          <span class="tip">
+            <span class="term">Unexplained</span>
+            <span class="tip-body" role="tooltip">Money the fee waterfall could not account for</span>
+          </span>
+        </span>
+        <span class="v">${esc(close.unexplained)}</span>
+      </div>
     </div>`;
 
   // Animate the arc after a frame, so the transition has an initial value to run from.

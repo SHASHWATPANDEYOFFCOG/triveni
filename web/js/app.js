@@ -12,6 +12,7 @@ import { onMotionPreferenceChange } from "./motion.js";
 import { openDialog } from "./ui/dialog.js";
 import { openPalette } from "./ui/palette.js";
 import { toast } from "./ui/toast.js";
+import { mountGuide, resetGuides } from "./ui/guide.js";
 import { observeReveals } from "./motion/reveal.js";
 
 const SCREENS = {
@@ -211,6 +212,9 @@ async function showScreen(name, { replace = false, force = false } = {}) {
     const module = await SCREENS[name]();
     const cleanup = module.render(container, state, { reload: load, showScreen, toast });
     if (typeof cleanup === "function") cleanups.set(name, cleanup);
+    // Guidance is mounted by the router rather than by each screen, so every screen
+    // gets it in the same position by construction and none can forget to.
+    mountGuide(container, name);
     observeReveals(container);
   } catch (cause) {
     container.innerHTML = `
@@ -434,6 +438,9 @@ function toggleHelp() {
       <p class="faint" style="margin-top: var(--space-5)">
         Every action in Triveni is reachable without a mouse.
       </p>
+      <button class="btn outline sm" id="help-reset-guides" style="margin-top: var(--space-3)">
+        Show the per-screen instructions again
+      </button>
     </div>`;
 
   closeHelpDialog = openDialog(overlay, {
@@ -446,6 +453,14 @@ function toggleHelp() {
   overlay.querySelector("#help-close").addEventListener("click", () => {
     closeHelpDialog?.();
     closeHelpDialog = null;
+  });
+
+  overlay.querySelector("#help-reset-guides").addEventListener("click", () => {
+    resetGuides();
+    closeHelpDialog?.();
+    closeHelpDialog = null;
+    toast("Instructions restored on every screen.", { tone: "success" });
+    showScreen(current, { force: true });
   });
 }
 

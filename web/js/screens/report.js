@@ -49,7 +49,12 @@ export function render(container, state) {
   container.innerHTML = `
     <style id="print-rules">
       @media print {
-        .header, .nav, .header-actions, #print-btn { display: none !important; }
+        /* The shell was renamed when the sidebar layout landed (.header/.nav became
+         * .rail/.topbar). These selectors were not updated, so the whole navigation
+         * chrome printed on every page of the report. */
+        .rail, .topbar, .backdrop, .toast-region,
+        .guide, .guide-restore, .report-actions { display: none !important; }
+        .app { display: block !important; }
         body { background: #fff; color: #000; }
         .card, .stat {
           border: 1px solid #ccc !important;
@@ -66,9 +71,14 @@ export function render(container, state) {
       <div class="eyebrow">Report · ${esc(close.as_of)}</div>
       <h1>Today's close</h1>
       <p>${esc(close.reason)}</p>
-      <button class="btn" id="print-btn" style="margin-top: var(--s-3)">
-        <span aria-hidden="true">⎙</span> Print / Save PDF
-      </button>
+      <div class="actionbar report-actions" style="margin-top: var(--s-3)">
+        <button class="btn" id="copy-btn">
+          <span aria-hidden="true">⧉</span> Copy report
+        </button>
+        <button class="btn primary" id="print-btn">
+          <span aria-hidden="true">⎙</span> Print / Save PDF
+        </button>
+      </div>
     </div>
 
     <div class="grid">
@@ -190,6 +200,33 @@ ${COMMANDS.map(([cmd, why]) => `${esc(cmd.padEnd(16))}<span class="comment"># ${
   renderTypeBars(container, byType, maxType);
   loadAudit(container);
   container.querySelector("#print-btn").addEventListener("click", () => window.print());
+
+  /* Copy the report as plain text.
+   *
+   * The button reports its own outcome rather than silently succeeding - clipboard
+   * writes fail routinely (an insecure origin, a denied permission, an older engine)
+   * and a copy button that does nothing visible is indistinguishable from one that
+   * worked. `data-state` drives the spinner/tick styling the button component
+   * already has. */
+  const copy = container.querySelector("#copy-btn");
+  copy.addEventListener("click", async () => {
+    const text = (container.innerText ?? container.textContent ?? "").trim();
+    const settle = (state, label) => {
+      copy.dataset.state = state;
+      copy.innerHTML = label;
+      setTimeout(() => {
+        delete copy.dataset.state;
+        copy.innerHTML = '<span aria-hidden="true">⧉</span> Copy report';
+      }, 2000);
+    };
+
+    try {
+      await navigator.clipboard.writeText(text);
+      settle("success", '<span aria-hidden="true">✓</span> Copied');
+    } catch {
+      settle("error", '<span aria-hidden="true">!</span> Copy blocked — select and press Ctrl+C');
+    }
+  });
 }
 
 function renderTypeBars(container, byType, max) {

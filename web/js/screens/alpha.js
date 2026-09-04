@@ -104,6 +104,24 @@ export function render(container, state) {
           <span>α = <strong id="alpha-value">—</strong></span>
           <span class="subtle">fitted threshold <span id="alpha-threshold" class="money">—</span></span>
         </div>
+
+        <!-- A bare range input makes the reader guess where to put it. These are the
+             three values the project actually argues about, so they are one press
+             away; the slider still allows anything in between. -->
+        <div class="row-between wrap" style="margin-top: var(--s-2)">
+          <div class="presets" role="group" aria-label="Common operating points">
+            <button class="preset" data-alpha="0.01" aria-pressed="false">
+              1%<span class="why">the operating point</span>
+            </button>
+            <button class="preset" data-alpha="0.02" aria-pressed="false">
+              2%<span class="why">breaches on one split</span>
+            </button>
+            <button class="preset" data-alpha="0.05" aria-pressed="false">
+              5%<span class="why">loose</span>
+            </button>
+          </div>
+          <button class="btn sm outline" id="alpha-reset">Reset to 1%</button>
+        </div>
       </div>
     </div>
 
@@ -218,6 +236,33 @@ export function render(container, state) {
   };
 
   slider.addEventListener("input", () => apply(Number(slider.value)));
+
+  /* The presets drive the same slider rather than a parallel code path, so the two
+   * controls can never disagree about where α is. `immediate` skips the debounce -
+   * a press is a decision, not a drag, and there is nothing to settle. */
+  const presets = [...container.querySelectorAll(".preset")];
+
+  const markPresets = (alpha) => {
+    for (const button of presets) {
+      button.setAttribute("aria-pressed", String(Number(button.dataset.alpha) === alpha));
+    }
+  };
+
+  const goTo = (alpha) => {
+    const index = GRID.findIndex((value) => value >= alpha);
+    if (index < 0) return;
+    slider.value = String(index);
+    markPresets(GRID[index]);
+    apply(index, { immediate: true });
+  };
+
+  for (const button of presets) {
+    button.addEventListener("click", () => goTo(Number(button.dataset.alpha)));
+  }
+  container.querySelector("#alpha-reset").addEventListener("click", () => goTo(0.01));
+  slider.addEventListener("input", () => markPresets(GRID[Number(slider.value)]));
+
+  markPresets(GRID[initial]);
   apply(initial, { immediate: true });
 
   return () => {

@@ -152,7 +152,7 @@ async function load(container, alive) {
 
       <div class="row" style="margin-top: var(--s-4)">
         <button class="btn danger" id="tamper-btn">Simulate tampering</button>
-        <button class="btn ghost" id="restore-btn" hidden>Restore</button>
+        <button class="btn primary" id="restore-btn" hidden>Restore the record</button>
       </div>
     </div>
   `;

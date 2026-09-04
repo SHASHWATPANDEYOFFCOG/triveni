@@ -964,3 +964,99 @@ def test_the_mobile_layout_is_designed_rather_than_shrunk() -> None:
         "each reflowed cell must carry its own label, or the card is a column of "
         "unlabelled values"
     )
+
+
+# --------------------------------------------------------------------------- #
+# Usability: does every screen tell you what to do?
+# --------------------------------------------------------------------------- #
+def test_every_screen_declares_guidance() -> None:
+    """An audit found the dashboard had every number and no instructions.
+
+    Guidance is mounted by the router, not by each screen, so a new screen gets it by
+    construction. This asserts the declarations exist and are shaped as *instructions* -
+    a statement of purpose plus things to press - rather than as another paragraph of
+    description, which is what was already there and was not working.
+    """
+    from api.mcp_server import TOOLS  # noqa: F401  (import proves the app loads)
+
+    guide = read(WEB / "js" / "ui" / "guide.js")
+    router = read(WEB / "js" / "app.js")
+
+    assert "mountGuide(container, name)" in router, (
+        "the router must mount guidance, so no screen can forget to"
+    )
+
+    declared = set(re.findall(r"^  ([a-z]+): \{$", guide, re.M))
+    screens = {path.stem for path in SCREENS}
+    assert screens - declared == set(), (
+        f"screens with no guidance: {sorted(screens - declared)}"
+    )
+    assert declared - screens == set(), (
+        f"guidance for screens that do not exist: {sorted(declared - screens)}"
+    )
+
+    # Each entry needs a purpose and at least two concrete actions.
+    for block in re.findall(r"\{\s*what: (.*?)\n  \},", guide, re.S):
+        steps = re.findall(r'^\s{6}"', block, re.M)
+        assert len(steps) >= 2, f"a guide with fewer than two actions is a description:\n{block[:120]}"
+
+    # Dismissible and restorable, or it becomes furniture people stop reading.
+    assert "localStorage" in guide and "resetGuides" in guide
+    assert "help-reset-guides" in router, "the help sheet must be able to bring them back"
+
+
+def test_every_screen_offers_a_primary_action() -> None:
+    """Before this, only two of eight screens had a primary call to action - the
+    alpha screen was a bare range input with no buttons at all. A screen with data
+    and no affordance is a screen a judge looks at and then leaves."""
+    missing = []
+    for path in SCREENS:
+        source = read(path)
+        has_primary = "btn primary" in source
+        # Some screens' primary affordance is a control group rather than a standing
+        # button: triage's filter chips over a keyboard-driven queue, stages' segmented
+        # ladder, and alpha's preset chips. Each is a real, obvious thing to press.
+        has_control = any(
+            token in source
+            for token in ('class="chip"', "ladder-seg", "flow-seg", 'class="preset"')
+        )
+        if not (has_primary or has_control):
+            missing.append(path.stem)
+    assert not missing, f"screens with no primary action or interactive control: {missing}"
+
+
+def test_the_alpha_screen_offers_the_values_the_project_argues_about() -> None:
+    """A bare slider makes the reader guess where to put it. The three values the
+    README actually argues about are one press away, and the presets drive the same
+    slider rather than a parallel code path - so the two controls cannot disagree."""
+    source = read(WEB / "js" / "screens" / "alpha.js")
+    for alpha in ("0.01", "0.02", "0.05"):
+        assert f'data-alpha="{alpha}"' in source, f"no preset for alpha={alpha}"
+    assert 'aria-pressed' in source, "presets must report their pressed state"
+    assert "slider.value = String(index)" in source, (
+        "a preset must move the slider, not run a parallel path"
+    )
+    assert "alpha-reset" in source
+
+
+def test_the_report_prints_without_the_navigation_chrome() -> None:
+    """The print stylesheet hid `.header, .nav, .header-actions`. The sidebar layout
+    renamed those to `.rail` / `.topbar`, so the entire navigation chrome printed on
+    every page of the report and nothing noticed."""
+    source = read(WEB / "js" / "screens" / "report.js")
+    block = source[source.index("@media print") :]
+    for selector in (".rail", ".topbar", ".backdrop"):
+        assert selector in block, f"{selector} must be hidden when printing"
+    # And the selectors it hides must actually exist in the shell.
+    app = read(WEB / "styles" / "app.css")
+    assert ".rail {" in app and ".topbar {" in app
+
+
+def test_the_tooltip_component_is_actually_used() -> None:
+    """It was built in the design-system pass and used exactly zero times, which is
+    how a component library grows dead weight."""
+    uses = sum('class="tip"' in read(path) for path in SCREENS)
+    assert uses > 0, "the .tip component is defined but never used anywhere"
+    assert ".term" in read(WEB / "styles" / "components.css"), (
+        "an explained term needs a visible affordance, not just a hover target"
+    )
