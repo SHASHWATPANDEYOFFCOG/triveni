@@ -34,9 +34,17 @@ tie-in is asserted from public positioning rather than from a document I can lin
 ## 2 · Build quality — **4 / 5**
 
 **Evidence.**
-- Clean clone → `make setup && make demo` → the full nine-beat narrative in **8.4s**,
+- Clean clone → `make setup && make demo` → the full nine-beat narrative in **~27s**,
   no keys, no network. Verified by deleting `data/generated/`, `metrics.json` and
   `.triveni/audit.db` and re-running.
+
+  **This figure was wrong here until now, and the correction is the point.** The
+  document claimed 8.4s. Re-timed on an idle machine across two consecutive runs it is
+  26.8s and 28.3s. `scripts/demo.py` has not been touched since the number was written,
+  so the demo grew past its measurement over several milestones and the document did
+  not follow — which is precisely the failure mode that `scripts/gen_web_metrics.py`
+  now prevents on the landing page, and that nothing prevents in prose. The stated
+  budget in `tasks.py` is <90s and that is still comfortably met.
 - **872 tests**, `mypy --strict` clean on `core/` and `recon/`, `ruff` clean.
 - `make eval` twice is **byte-identical**, across processes and under
   `PYTHONHASHSEED=random` (`tests/test_eval.py:42`, `:57`).
