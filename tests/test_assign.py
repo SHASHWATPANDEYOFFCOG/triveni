@@ -404,12 +404,59 @@ def test_the_solver_is_deterministic() -> None:
     attributions because the timeout landed in a different place. That would have
     quietly broken `make eval`'s byte-identical guarantee for anyone whose laptop was
     busy.
+
+    The gateway reset is not a way of making this pass; it removes a variable that has
+    nothing to do with the solver. The LLM budget is deliberately *process-wide* - it
+    caps spend per run - so by the time the full suite reaches this test the cap is
+    partly spent, and it can fall between the two reconciliations below. That made this
+    test fail for a reason its name does not describe, and the failure was in the
+    exception list rather than the match list, which is the signature of the escalation
+    stage abstaining, not of the solver wobbling. The property that budget exhaustion
+    is *safe* is worth asserting on its own, and is asserted directly below.
     """
-    first, second = reconcile(), reconcile()
+    from core.llm import reset_gateway
+
+    reset_gateway()
+    first = reconcile()
+    reset_gateway()
+    second = reconcile()
     assert [m.match_id for m in first.matches] == [m.match_id for m in second.matches]
     assert [e.exception_id for e in first.exceptions] == [
         e.exception_id for e in second.exceptions
     ]
+
+
+def test_running_out_of_llm_budget_never_changes_a_money_decision() -> None:
+    """Exhausting the budget must cost coverage, never correctness.
+
+    Found while diagnosing the flake above: with the cap drained, a reconciliation
+    produces a *different exception list* - more rows abstain and route to a human -
+    while the match list stays byte-identical. That is the direction a finance system
+    is allowed to degrade in, and it is the reason the flake was a test bug rather than
+    a product bug. Pinned here because nothing else asserts it, and the opposite
+    behaviour - a spent budget quietly changing which payments were matched to which
+    settlement - would be the most dangerous failure this system could have.
+    """
+    from core.llm import LLMGateway, reset_gateway
+
+    reset_gateway()
+    funded = reconcile()
+
+    reset_gateway(LLMGateway.from_env())
+    from core.llm import gateway
+
+    gateway().budget_inr = Decimal("0.0001")
+    starved = reconcile()
+
+    assert [m.match_id for m in starved.matches] == [
+        m.match_id for m in funded.matches
+    ], "a spent LLM budget must not change a single match"
+    assert gateway().meter.abstentions > 0, (
+        "expected the drained budget to force abstentions - if it did not, this test "
+        "is no longer exercising the condition it describes"
+    )
+
+    reset_gateway()
 
 
 def test_auto_posted_matches_are_perfectly_precise() -> None:

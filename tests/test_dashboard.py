@@ -377,3 +377,54 @@ def test_the_seal_reports_the_real_residual() -> None:
     assert "balanced: raw.balanced === true" in source, (
         "an absent `balanced` field must not read as balanced"
     )
+
+
+def test_hidden_actually_hides() -> None:
+    """The bug that made the whole dashboard look dead.
+
+    `el.hidden = true` relies on `[hidden] { display: none }`, which ships in the
+    *user-agent* stylesheet. Author rules beat the UA stylesheet by origin - specificity
+    is never consulted - so `.help-overlay { display: grid }` quietly won. That overlay
+    is `position: fixed; inset: 0; z-index: 100`, so it covered every screen from first
+    paint, and neither Escape nor its close button could dismiss it: both set `.hidden`,
+    which by then meant nothing. `.btn { display: inline-flex }` did the same to the
+    audit screen, showing "tamper" and "restore" at once.
+
+    So the guard has to be `!important` - it must beat component rules that do not exist
+    yet, in a stylesheet loaded after this one.
+    """
+    # Comments first: this rule is explained in a comment that quotes the very selector
+    # being searched for, so an unstripped scan passes on the prose alone.
+    app = re.sub(r"/\*.*?\*/", "", read(WEB / "styles" / "app.css"), flags=re.S)
+    rule = re.search(r"\[hidden\]\s*\{[^}]*\}", app)
+    assert rule is not None, "app.css must define a global [hidden] rule"
+    assert re.search(r"display:\s*none\s*!important", rule.group(0)), (
+        "[hidden] must be !important, or any component setting `display` defeats it"
+    )
+
+    # Non-vacuity: the trap this guards against is still present, so deleting the rule
+    # would genuinely reintroduce an undismissable overlay rather than change nothing.
+    screens = re.sub(r"/\*.*?\*/", "", read(WEB / "styles" / "screens.css"), flags=re.S)
+    overlay = re.search(r"\.help-overlay\s*\{[^}]*\}", screens)
+    assert overlay is not None and "display:" in overlay.group(0), (
+        "expected .help-overlay to still set display - if it no longer does, this test "
+        "proves nothing and should be re-pointed at a rule that does"
+    )
+    assert 'id="help"' in read(WEB / "index.html")
+    assert "overlay.hidden = true" in read(WEB / "js" / "app.js")
+
+
+def test_the_help_dialog_can_be_dismissed_every_way_it_is_opened() -> None:
+    """Escape, the close button and a click on the backdrop must all reach `closeHelp`,
+    and `closeHelp` must clear the attribute *before* it moves focus - so a throw on the
+    focus call cannot strand the dialog open on top of the page."""
+    source = read(WEB / "js" / "app.js")
+    assert 'event.key === "Escape"' in source and "closeHelp()" in source
+    assert 'event.target.id === "help-close"' in source
+    assert "event.target === overlay" in source
+
+    body = source[source.index("function closeHelp()") :]
+    body = body[: body.index("\n}")]
+    assert body.index("overlay.hidden = true") < body.index(".focus()"), (
+        "clear `hidden` before moving focus, so a focus failure cannot strand the dialog"
+    )

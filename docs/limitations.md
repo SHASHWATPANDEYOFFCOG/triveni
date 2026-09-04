@@ -74,6 +74,20 @@ perfect while proving nothing.
 - **No cross-browser testing.** Developed against one engine. The code uses only widely
   supported APIs (ES modules, Web Animations, `EventSource`, `color-mix`), but
   `color-mix` in particular is newer than the rest.
+- **The dashboard's 74 tests are static, not behavioural — this is a real gap, and it
+  has already cost us once.** They parse the source and assert what it says: every
+  identifier is defined, every import resolves, no screen hard-codes a cost, wide tables
+  scroll inside their own container. What they cannot see is what a browser does with
+  correct-looking source. All 74 passed while `.help-overlay { display: grid }` silently
+  beat the user-agent stylesheet's `[hidden] { display: none }` — author rules outrank UA
+  rules by origin — leaving a `z-index: 100` modal over every screen that neither Escape
+  nor its close button could dismiss. The dashboard was unusable and the suite was green.
+  Fixed, and a test now pins the guard, but the underlying gap stands: **rendering,
+  layout, focus order and cascade conflicts are not covered by anything here.** Closing
+  it needs a headless browser, which is a dependency this project's zero-build front-end
+  argument ([ADR 0018](adr/0018-a-zero-build-dashboard.md)) has so far avoided. Until
+  then, treat "the dashboard tests pass" as "the source is self-consistent", not as
+  "the page works".
 
 ## Deliberately excluded
 

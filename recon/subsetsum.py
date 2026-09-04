@@ -238,7 +238,7 @@ def cp_sat_subset(
     tolerance: Tolerance,
     *,
     weights: Sequence[float] | None = None,
-    time_limit_s: float = 5.0,  # money-lint: allow-float solver work units, not an amount
+    deterministic_budget: float = 2.0,  # money-lint: allow-float solver work units, not an amount
 ) -> SubsetResult | None:
     """Subset selection as an integer program.
 
@@ -269,7 +269,16 @@ def cp_sat_subset(
         )
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = time_limit_s
+    # A *deterministic* budget, not a wall-clock one - the same correction already made
+    # in `recon/assign.py`, which was missed here because this solver reaches OPTIMAL so
+    # quickly on an idle machine that the timeout never bit. It bites on a busy one:
+    # running the test suite alongside the API server made this stop at FEASIBLE instead
+    # of OPTIMAL on one settlement, which changed an attribution, which changed an
+    # exception id, which broke the byte-identical `make eval` guarantee. The parameter
+    # was already *named* for work units and documented as such; only the assignment was
+    # wrong. `max_deterministic_time` counts the solver's own work, so the same model
+    # stops at the same point on any machine, however loaded.
+    solver.parameters.max_deterministic_time = deterministic_budget
     solver.parameters.num_workers = 1  # determinism over speed
     solver.parameters.random_seed = 20260101
     status = solver.solve(model)

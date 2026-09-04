@@ -27,6 +27,7 @@ below the conformal threshold of 0.9548" makes it trivial.
 from __future__ import annotations
 
 import datetime as dt
+import threading
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
@@ -167,6 +168,8 @@ class TriveniMCP:
     clock: Clock = field(default_factory=lambda: FrozenClock.at("2026-04-01 09:00"))
     _cached: Any = None
     _warehouse: Any = None
+    _reports: dict = field(default_factory=dict)
+    _lock: Any = field(default_factory=threading.Lock)
 
     # --- discovery ---------------------------------------------------------
     def list_tools(self) -> list[dict[str, Any]]:
@@ -185,11 +188,25 @@ class TriveniMCP:
 
     # --- the run -----------------------------------------------------------
     def _result(self) -> Any:
-        if self._cached is None:
-            from recon.pipeline import reconcile
+        """The reconciliation, computed once.
 
-            self._cached = reconcile(directory=self.directory, clock=self.clock)
+        Locked because the API warms this on a background thread at startup while
+        requests may already be arriving. Without the lock the first browser load
+        races the warm-up and both pay the full ten seconds - the exact cost the
+        warm-up exists to hide.
+        """
+        if self._cached is not None:
+            return self._cached
+        with self._lock:
+            if self._cached is None:
+                from recon.pipeline import reconcile
+
+                self._cached = reconcile(directory=self.directory, clock=self.clock)
         return self._cached
+
+    def warm(self) -> None:
+        """Pay the reconciliation cost before anyone asks for it."""
+        self._result()
 
     # --- tools -------------------------------------------------------------
     def _tool_close_books(self, date: str, alpha: float | str = 0.01) -> dict[str, Any]:
@@ -197,7 +214,16 @@ class TriveniMCP:
 
         as_of = parse_ist(date).date()
         result = self._result()
-        report = evaluate_pipeline(alpha=Decimal(str(alpha)))
+
+        # Memoised per alpha. Calibration is deterministic for a given (result,
+        # alpha), so re-fitting it on every slider position was pure waste - and it
+        # is what made the alpha slider unusable rather than merely slow.
+        key = str(alpha)
+        if key not in self._reports:
+            self._reports[key] = evaluate_pipeline(
+                alpha=Decimal(str(alpha)), result=result
+            )
+        report = self._reports[key]
         metrics = {m.name: m for m in report.metrics}
 
         matched = int(metrics["match_rate"].value * len(result.rows))

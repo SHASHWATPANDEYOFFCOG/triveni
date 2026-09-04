@@ -37,7 +37,7 @@ tie-in is asserted from public positioning rather than from a document I can lin
 - Clean clone → `make setup && make demo` → the full nine-beat narrative in **8.4s**,
   no keys, no network. Verified by deleting `data/generated/`, `metrics.json` and
   `.triveni/audit.db` and re-running.
-- **837 tests**, `mypy --strict` clean on `core/` and `recon/`, `ruff` clean.
+- **840 tests**, `mypy --strict` clean on `core/` and `recon/`, `ruff` clean.
 - `make eval` twice is **byte-identical**, across processes and under
   `PYTHONHASHSEED=random` (`tests/test_eval.py:42`, `:57`).
 - Six invariants enforced in code, not convention: the float lint
@@ -117,7 +117,12 @@ worked and was invisible. A defence you cannot demonstrate is one nobody will be
 
 ---
 
-## 5 · Craft / UI — **4 / 5**
+## 5 · Craft / UI — **3 / 5**
+
+> Revised down from 4 after the dashboard was run in a browser rather than read. See
+> [What running it live found](#what-running-it-live-found). Every static test passed
+> while the page was unusable, which is the honest reason this is a 3.
+
 
 Eight screens, **197 KB, zero dependencies, zero build step**, served by the API process
 ([ADR 0018](adr/0018-a-zero-build-dashboard.md)). Both themes as complete token sets with
@@ -198,9 +203,119 @@ in `conftest.py`; timing belongs in `make bench`.
 
 ---
 
+---
+
+## What running it live found
+
+The five findings above came from *reading* the code. These came from opening the
+dashboard in a browser and using it, which is a different exercise and a more
+embarrassing one — the first thing it found was that the product did not work at all.
+
+### 1 · The dashboard was unusable on load, and every test passed
+
+`el.hidden = true` depends on `[hidden] { display: none }`, which lives in the
+**user-agent** stylesheet. Author rules beat the UA stylesheet by *origin* — specificity
+never enters into it — so `.help-overlay { display: grid }` in `screens.css` silently
+won. That overlay is `position: fixed; inset: 0; z-index: 100`.
+
+The consequence: the keyboard-help dialog covered all eight screens from first paint,
+and neither <kbd>Esc</kbd> nor its own close button could dismiss it — both set
+`.hidden`, which by then meant nothing. The same trap hit `.btn { display: inline-flex }`
+on the audit screen, which showed "tamper" and "restore" simultaneously.
+
+Fixed with one global `[hidden] { display: none !important }` in `web/styles/app.css`,
+where `!important` is load-bearing rather than lazy: it has to beat component rules that
+do not exist yet, in a stylesheet loaded later. `tests/test_dashboard.py` asserts the
+rule survives, and the assertion was proven non-vacuous by deleting the rule and
+watching it fail.
+
+**The lesson is the uncomfortable part.** `tests/test_dashboard.py` was written in
+response to the last review's finding that `web/` had no tests. It has 74 of them. All
+74 passed while the dashboard was unusable, because every one is a *static* test — they
+read the source and check what it says, and no static analysis of correct-looking CSS
+and correct-looking JS reveals a cascade-origin conflict between two files. The tests
+were not wrong; they were the wrong *kind*, and the previous review's claim that the
+`web/` gap was closed was too confident. It closed the undefined-identifier class and
+left the "does it actually render" class wide open.
+
+### 2 · The page blocked ten seconds on a call it made twice
+
+`/close` took ~19s and the dashboard awaited it before first paint, so a cold load showed
+skeletons and read as dead. Two causes, both measured:
+
+- `_tool_close_books` called `self._result()` (cached) **and** `evaluate_pipeline()`,
+  which called `reconcile()` again independently — so every request paid the ~10s twice,
+  and the α slider paid it again per position.
+- Nothing was memoised per α, and nothing was warmed at startup.
+
+Fixed by threading the existing reconciliation into `evaluate_pipeline()`, memoising the
+report per α, warming the reconciliation on a background thread at startup, and splitting
+the page load into two waves so the shell paints from `/health` alone. Measured, same
+machine:
+
+| | before | after |
+|---|---|---|
+| first paint | ~19,000 ms | **22 ms** |
+| full data on screen | ~19,000 ms | **1,745 ms** |
+| dragging α to a new value | ~19,000 ms | **~200 ms** |
+| returning to a seen α | ~19,000 ms | **4 ms** |
+
+The ten seconds themselves are real and are not hidden: a banner says the books are
+closing and why the global solver costs what it costs.
+
+### 3 · A determinism flake, and a wrong first diagnosis worth recording
+
+`test_the_solver_is_deterministic` failed in a full-suite run and passed in isolation.
+
+My first diagnosis was wrong, and the way it was wrong is the point. `recon/subsetsum.py`
+set `max_time_in_seconds` — a wall-clock budget, on a parameter already *named*
+`deterministic_budget`-style and documented as work units, and the exact bug that had
+already been fixed in `recon/assign.py`. It looked like an open-and-shut cause. It was
+not: instrumenting the pipeline showed `cp_sat_subset` is called **zero** times on the
+536-row seed *and* zero times on the full 5,481-row set, because no settlement bundle
+exceeds `MITM_LIMIT = 34` items. It is reached only by its own unit tests. The fix is
+kept because the inconsistency was real, but it fixed nothing, and reporting it as the
+cause would have been a fabricated causal claim.
+
+The actual cause: the LLM gateway's ₹25 spend cap is **process-wide by design**. Across a
+full suite run it is partly spent by the time this test runs, and it can fall *between*
+the test's two `reconcile()` calls — so the first gets model answers and the second
+abstains. The signature said so and I read past it: the **match** lists were identical
+and only the **exception** lists diverged, which is escalation abstaining, not a solver
+wobbling.
+
+That signature turned out to be a property worth owning rather than a nuisance. Draining
+the budget deliberately changes the exception list — more rows route to a human — and
+leaves the match list byte-identical. Budget exhaustion costs *coverage*, never
+*correctness*, which is the only direction a finance system may degrade in. It is now
+asserted directly by
+`test_running_out_of_llm_budget_never_changes_a_money_decision`, and
+`test_the_solver_is_deterministic` resets the gateway so it measures the solver its name
+refers to.
+
+`make eval`'s byte-identical guarantee was never at risk: it runs in a fresh process with
+a fresh budget. But the guarantee is narrower than it sounded, and now says so.
+
+### What this run costs the scores
+
+Craft drops from 4 to **3**. A dashboard that cannot be used until a one-line CSS fix is
+not a 4, and the gap was not caught by 74 tests written specifically to catch dashboard
+bugs.
+
+Build quality stays at **4** — the API and pipeline fixes are measured, and the
+determinism investigation ended with two sharper tests rather than a weakened one — but
+the honest note is that the first diagnosis was confidently wrong for twenty minutes and
+was only caught by instrumenting instead of assuming.
+
+The standing lesson: **static tests prove what the source says, not what the browser
+does.** Closing that gap properly needs a headless browser, which
+`docs/limitations.md` now records as absent rather than implying otherwise.
+
+---
+
 ## Honest summary
 
-**4 / 5 · 4 / 5 · 5 / 5 · 5 / 5**, and 4/5 on craft.
+**4 / 5 · 4 / 5 · 5 / 5 · 5 / 5**, and 3/5 on craft.
 
 The strongest thing here is that the interesting numbers are the *unflattering* ones and
 they are all on the page: recall is 82.90% and not hidden behind the 95.34% match rate;
@@ -208,7 +323,16 @@ they are all on the page: recall is 82.90% and not hidden behind the 95.34% matc
 `seasonal_drift` loses to the naive baseline; the cost model's own verdict on an early
 fixture was that automation lost to a spreadsheet.
 
-The weakest is that a substantial surface — the dashboard — was built without tests and
-needed an adversarial pass to find five real defects, one of which would have thrown on
-the first failure a judge triggered. That is fixed, and the fix is a test that was proven
-non-vacuous by reintroducing the original bug. But it should not have taken a review.
+The weakest is the dashboard, twice over. It was built without tests and needed an
+adversarial pass to find five real defects. Then 74 tests were written in response — and
+all 74 passed while a modal covered every screen from first paint and could not be
+dismissed, because they were static tests and the bug was a CSS cascade-origin conflict
+between two files. Reading the source proved the source was consistent. It was not until
+the page was opened in a browser that anyone learned it did not work.
+
+That is the finding I would most want a judge to know, because the previous version of
+this document claimed the `web/` testing gap was closed. It was not. It was narrowed —
+the undefined-identifier class is genuinely caught now — and the class that actually
+takes a product down was still wide open. The correct fix is a headless browser, which
+this project does not have and `docs/limitations.md` now says so plainly rather than
+letting a test count imply coverage it does not have.

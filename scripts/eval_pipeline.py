@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from core.costmodel import CostModel, OutcomeMix, price
 from core.eval import Confusion, MetricRegistry, MetricsReport, source_digest
@@ -45,6 +46,7 @@ def evaluate_pipeline(
     dataset: str | None = None,
     seed: int = 20260101,
     alpha: Decimal = Decimal("0.01"),
+    result: Any = None,
 ) -> MetricsReport:
     """Grade the pipeline, with the auto-post threshold conformally calibrated.
 
@@ -62,7 +64,13 @@ def evaluate_pipeline(
     divided by 17 settlement groups.
     """
     directory = ROOT / "data" / ("seed" if dataset in (None, "seed") else f"generated/{dataset}")
-    result = reconcile(directory=directory)
+    # Reuse a reconciliation the caller already has. `/close` used to call
+    # `self._result()` AND this function, which reconciled a second time
+    # independently - so every request paid ~10s twice, and the alpha slider paid it
+    # again per position. The dashboard sat on skeletons for twenty seconds and
+    # looked dead.
+    if result is None:
+        result = reconcile(directory=directory)
 
     truth = json.loads((directory / "ground_truth.json").read_text(encoding="utf-8"))
     manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))

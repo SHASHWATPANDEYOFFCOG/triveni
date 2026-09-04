@@ -22,6 +22,7 @@ import asyncio
 import datetime as dt
 import json
 import os
+import threading
 from collections.abc import AsyncIterator
 from decimal import Decimal
 from pathlib import Path
@@ -51,6 +52,23 @@ app = FastAPI(
 )
 
 _server = TriveniMCP()
+
+
+@app.on_event("startup")
+async def _warm() -> None:
+    """Reconcile in the background the moment the server starts.
+
+    A cold reconciliation is ~10s - Fellegi-Sunter and the global assignment are ~5s
+    each, which is the honest price of solving the whole day at once instead of
+    greedily. That cost is unavoidable, but it does not have to be *visible*: a human
+    takes several seconds to open a browser after `make run`, so we spend it then.
+    Off the event loop, so /health and the static dashboard answer instantly while it
+    runs, and non-blocking, so a failure here degrades to a slow first request rather
+    than a server that will not start.
+    """
+    if os.environ.get("TRIVENI_NO_WARMUP"):
+        return
+    threading.Thread(target=_server.warm, name="triveni-warmup", daemon=True).start()
 
 
 # --------------------------------------------------------------------------- #

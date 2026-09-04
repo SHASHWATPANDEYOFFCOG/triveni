@@ -6,6 +6,26 @@
   box-sizing: border-box;
 }
 
+/* `hidden` must actually hide.
+ *
+ * The browser's own `[hidden] { display: none }` lives in the UA stylesheet, and ANY
+ * author rule that sets `display` beats it - specificity never enters into it, because
+ * author styles outrank UA styles by origin. So `.help-overlay { display: grid }` and
+ * `.btn { display: inline-flex }` silently defeated `el.hidden = true`.
+ *
+ * The cost of that was not cosmetic. The keyboard-help overlay is `position: fixed;
+ * inset: 0; z-index: 100`, so it covered the entire dashboard from first paint, and
+ * neither Escape nor its close button could dismiss it - both set `.hidden`, which the
+ * rule above ignored. The dashboard looked like it had failed to start. On the audit
+ * screen the same trap showed the "tamper" and "restore" buttons simultaneously.
+ *
+ * `!important` is load-bearing here rather than lazy: this rule has to beat every
+ * future component rule too, including ones not written yet. `tests/test_dashboard.py`
+ * asserts it stays. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }

@@ -61,24 +61,65 @@ async function boot() {
 }
 
 async function load() {
-  const [health, close, exceptions, boundaries, costmodel] = await Promise.all([
-    api.health(),
+  // Two waves, on purpose.
+  //
+  // /health is the only endpoint that needs no reconciliation, so it is the whole of
+  // wave one. Everything else - close, exceptions, boundaries, cost model - reads the
+  // same reconciliation, and a cold one is about ten seconds: Fellegi-Sunter and the
+  // global solver are ~5s each, the honest price of solving the whole day at once.
+  // The server warms it at startup, so in practice wave two is usually already paid.
+  //
+  // Awaiting them together meant the page showed nothing but skeletons for ten
+  // seconds and read as broken. Now the fast wave paints immediately, a banner says
+  // what is still running, and the close fills in when it lands.
+  const health = await api.health();
+  state.health = health.ok ? health.data : null;
+  state.loaded = true;
+  state.error = health.ok ? "" : health.error;
+
+  renderConnection();
+  setClosing(true);
+  await showScreen(current, { force: true });
+
+  const [close, exceptions, boundaries, costmodel] = await Promise.all([
     api.close(state.date, state.alpha),
     api.exceptions({ limit: 200 }),
     api.boundaries(),
     api.costmodel(),
   ]);
 
-  state.health = health.ok ? health.data : null;
   state.close = close.ok ? close.data : null;
   state.exceptions = exceptions.ok ? exceptions.data : [];
   state.boundaries = boundaries.ok ? boundaries.data : null;
   state.costmodel = costmodel.ok ? costmodel.data : null;
-  state.loaded = true;
-  state.error = close.ok ? "" : close.error;
+  if (!close.ok) state.error = close.error;
+  setClosing(false);
 
   renderConnection();
   await showScreen(current, { force: true });
+}
+
+/** A visible, honest note about the one slow call, instead of a mute skeleton. */
+function setClosing(active) {
+  let banner = document.getElementById("closing");
+  if (!active) {
+    banner?.remove();
+    return;
+  }
+  if (banner) return;
+  banner = document.createElement("div");
+  banner.id = "closing";
+  banner.className = "closing-banner";
+  banner.setAttribute("role", "status");
+  banner.innerHTML = `
+    <span class="closing-dot" aria-hidden="true"></span>
+    <span>
+      <strong>Closing the books…</strong>
+      reconciling 536 rows across three ledgers. The global solver and Fellegi-Sunter
+      are about five seconds each — that is the cost of solving the whole day at once
+      rather than greedily. Everything else on this page is already live.
+    </span>`;
+  document.getElementById("main").prepend(banner);
 }
 
 function renderConnection() {

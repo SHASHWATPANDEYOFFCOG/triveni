@@ -489,3 +489,34 @@ details.sql-proof pre {
 .help-list > div { display: grid; grid-template-columns: 5rem 1fr; gap: var(--s-3); align-items: baseline; }
 .help-list dt { margin: 0; }
 .help-list dd { margin: 0; color: var(--fg-muted); font-size: var(--text-sm); }
+
+/* --------------------------------------------------------------------------- */
+/* The one slow call, announced rather than hidden behind a mute skeleton       */
+/* --------------------------------------------------------------------------- */
+.closing-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  margin-bottom: var(--s-4);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--accent-bg);
+  border-radius: var(--r-2);
+  font-size: var(--text-sm);
+  color: var(--fg);
+}
+
+.closing-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 0.4em;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  flex: none;
+  animation: closing-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes closing-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
