@@ -1,270 +1,530 @@
 /* Triveni design tokens.
  *
- * Every colour, size, duration and easing in the product is named here. Nothing
- * downstream hard-codes a hex value - if a component needs a colour that does not
+ * Every colour, size, duration, blur, shadow and easing in the product is named here.
+ * Nothing downstream hard-codes a value - if a component needs something that does not
  * exist as a token, the answer is a new token, not a literal.
  *
- * The identity is a warm editorial "financial terminal": deep ink ground, one warm
- * gold for emphasis, one cool blue for information, and semantic green/amber/red
- * reserved *exclusively* for state. A gold that also means "good" would make the
- * whole palette illegible the moment something goes wrong, so gold never carries
- * meaning - it carries attention.
+ * ---------------------------------------------------------------------------
+ * THE IDENTITY
+ * ---------------------------------------------------------------------------
+ * Deep-space ground, aurora light, glass surfaces. Blue is the product, violet is
+ * intelligence, cyan is the live signal. The palette is chosen for *finance*: blue and
+ * violet read as trustworthy and computational, and - critically - neither of them is
+ * ever allowed to mean "good" or "bad".
  *
- * Two complete themes. Light is "paper ledger": warm cream, hairline rules, the look
- * of a printed statement. Dark is "terminal". Both are defined as full token sets on
- * :root so neither is a patch on the other, and the [data-theme] block wins over the
- * media query so an explicit choice always beats the system preference.
+ * That last rule is the one that matters. Green, amber and red are reserved
+ * EXCLUSIVELY for state. If the brand colour also meant "healthy", the entire screen
+ * would become unreadable the moment something went wrong, because the eye could no
+ * longer tell decoration from alarm. Blue carries attention; green carries meaning.
+ *
+ * ---------------------------------------------------------------------------
+ * TWO COMPLETE THEMES
+ * ---------------------------------------------------------------------------
+ * Dark is the designed one - an AI product at night. Light is a genuine premium
+ * counterpart, not a washed-out inversion: cool white, hairline rules, the same blue.
+ * Both are defined as FULL token sets, so neither is a patch on the other and they
+ * cannot drift apart. `[data-theme]` beats the media query in both directions, so an
+ * explicit choice always wins over the system preference.
+ *
+ * Token names are stable on purpose. Eight working screens and ~5,700 lines of CSS and
+ * JS already consume `--accent`, `--fg-muted`, `--state-matched` and friends. The
+ * identity below is a re-pointing of those values, not a rename, so the whole product
+ * re-skins at once instead of breaking a screen at a time.
  */
 
 :root {
   color-scheme: light dark;
 
-  /* ---- palette: paper ledger (light) ------------------------------------ */
-  --ink-900: #16130e;
-  --ink-800: #2a251d;
-  --ink-700: #443c30;
-  --ink-600: #6b6153;
-  --ink-500: #8d8375;
-  --ink-400: #b3aa9c;
-  --ink-300: #d4ccbe;
-  --ink-200: #e8e1d5;
-  --ink-100: #f4efe6;
-  --ink-050: #fbf8f2;
+  /* ======================================================================= */
+  /* 1 - PALETTE RAMPS                                                       */
+  /* Raw material. Components never reference these directly; they reference */
+  /* the semantic layer below, so a hue change moves both themes together.   */
+  /* ======================================================================= */
 
-  --gold-600: #8a6410;
-  --gold-500: #b8860b;
-  --gold-400: #d4a017;
-  --gold-300: #e8c25c;
-  --gold-100: #f7ecd0;
+  /* Deep space - the ground the whole product sits on */
+  --void-950: #05070d;
+  --void-900: #080b14;
+  --void-850: #0b1020;
+  --void-800: #0f1526;
+  --void-750: #11182a;
+  --void-700: #161e33;
+  --void-600: #1e2740;
+  --void-500: #2a3450;
 
-  --blue-600: #1a5a7a;
-  --blue-500: #2b7fa8;
-  --blue-400: #4da3c9;
-  --blue-100: #dceef6;
+  /* Slate - text and rules */
+  --slate-050: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
 
-  --green-600: #1f6b3a;
-  --green-500: #2e8b57;
-  --green-400: #52a86f;
-  --green-100: #dcf0e4;
+  /* Blue - the product itself */
+  --blue-800: #1e40af;
+  --blue-700: #1d4ed8;
+  --blue-600: #2563eb;
+  --blue-500: #3b82f6;
+  --blue-400: #5b8cff;
+  --blue-300: #93b4ff;
+  --blue-200: #c7d9ff;
+  --blue-100: #e6eeff;
 
-  --amber-600: #9a6410;
-  --amber-500: #c8860f;
-  --amber-400: #e0a534;
-  --amber-100: #fbeed3;
+  /* Violet - intelligence, the model, the calibrated threshold */
+  --violet-700: #6d28d9;
+  --violet-600: #7c3aed;
+  --violet-500: #8b5cf6;
+  --violet-400: #a78bfa;
+  --violet-300: #c4b5fd;
+  --violet-100: #ede9fe;
 
-  --red-600: #96281b;
-  --red-500: #b83426;
-  --red-400: #d15a4c;
-  --red-100: #fadfdb;
+  /* Cyan - live signal, streaming, "this is happening now" */
+  --cyan-600: #0891b2;
+  --cyan-500: #06b6d4;
+  --cyan-400: #22d3ee;
+  --cyan-300: #67e8f9;
+  --cyan-100: #cffafe;
 
-  /* ---- semantic ---------------------------------------------------------- */
-  --bg: var(--ink-050);
+  /* Semantic ramps. These three mean one thing each, forever. */
+  --green-800: #166534;
+  --green-700: #15803d;
+  --green-600: #16a34a;
+  --green-500: #22c55e;
+  --green-400: #4ade80;
+  --green-100: #dcfce7;
+
+  --amber-800: #92400e;
+  --amber-700: #b45309;
+  --amber-600: #d97706;
+  --amber-500: #f59e0b;
+  --amber-400: #fbbf24;
+  --amber-100: #fef3c7;
+
+  --red-800: #991b1b;
+  --red-700: #b91c1c;
+  --red-600: #dc2626;
+  --red-500: #ef4444;
+  --red-400: #f87171;
+  --red-100: #fee2e2;
+
+  /* ======================================================================= */
+  /* 2 - SEMANTIC SURFACE + TEXT   (light theme values)                      */
+  /* ======================================================================= */
+  --bg: #fbfcfe;
   --bg-raised: #ffffff;
-  --bg-sunken: var(--ink-100);
-  --bg-hover: var(--ink-100);
-  --bg-active: var(--ink-200);
+  --bg-sunken: var(--slate-100);
+  --bg-hover: var(--slate-100);
+  --bg-active: var(--slate-200);
 
-  --fg: var(--ink-900);
-  --fg-muted: var(--ink-600);
-  --fg-subtle: var(--ink-500);
-  --fg-inverse: var(--ink-050);
+  --fg: var(--slate-900);
+  --fg-muted: var(--slate-600);
+  --fg-subtle: var(--slate-500);
+  --fg-inverse: var(--slate-050);
 
-  --rule: var(--ink-200);
-  --rule-strong: var(--ink-300);
+  --rule: var(--slate-200);
+  --rule-strong: var(--slate-300);
 
-  --accent: var(--gold-600);
-  --accent-bg: var(--gold-100);
-  --info: var(--blue-600);
-  --info-bg: var(--blue-100);
+  --accent: var(--blue-600);
+  --accent-hover: var(--blue-700);
+  --accent-bg: var(--blue-100);
+  --accent-fg: #ffffff;
 
-  /* State colours. These mean one thing each, everywhere in the product. */
-  --ok: var(--green-600);
+  --secondary: var(--violet-600);
+  --secondary-bg: var(--violet-100);
+
+  --info: var(--cyan-600);
+  --info-bg: var(--cyan-100);
+
+  --ok: var(--green-700);
   --ok-bg: var(--green-100);
-  --warn: var(--amber-600);
+  --warn: var(--amber-700);
   --warn-bg: var(--amber-100);
-  --bad: var(--red-600);
+  --bad: var(--red-700);
   --bad-bg: var(--red-100);
 
   /* ---- the six row states, colour-coded once and used everywhere --------- */
-  --state-matched: var(--green-600);
+  --state-matched: var(--green-800);
   --state-matched-bg: var(--green-100);
-  --state-auto-posted: var(--blue-600);
+  --state-auto-posted: var(--blue-700);
   --state-auto-posted-bg: var(--blue-100);
-  --state-needs-review: var(--amber-600);
+  --state-needs-review: var(--amber-800);
   --state-needs-review-bg: var(--amber-100);
-  --state-abstained: var(--ink-600);
-  --state-abstained-bg: var(--ink-200);
-  --state-exception: var(--red-600);
+  --state-abstained: var(--slate-600);
+  --state-abstained-bg: var(--slate-200);
+  --state-exception: var(--red-700);
   --state-exception-bg: var(--red-100);
-  --state-denied: var(--ink-900);
-  --state-denied-bg: var(--ink-300);
+  --state-denied: var(--slate-900);
+  --state-denied-bg: var(--slate-300);
 
-  /* ---- type -------------------------------------------------------------- */
-  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
-    "Source Serif 4", Georgia, serif;
-  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  /* ======================================================================= */
+  /* 3 - GLASS + AURORA + GLOW                                               */
+  /* Used selectively. Glass is for things that FLOAT - the navbar, modals,  */
+  /* overlays on the 3D scene. A glass page is a page with no hierarchy.     */
+  /* ======================================================================= */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.86);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-blur: 20px;
+  --scrim: rgba(15, 23, 42, 0.45);
+
+  /* The three ledgers, named once. The hero scene reads these straight off the root
+   * element, so the 3D visual and the legend beside it can never disagree about which
+   * colour means "bank". */
+  --stream-payments: #2563eb;
+  --stream-bank: #7c3aed;
+  --stream-ledger: #0891b2;
+  --stream-core: #0f172a;
+
+  --aurora-1: rgba(91, 140, 255, 0.18);
+  --aurora-2: rgba(139, 92, 246, 0.14);
+  --aurora-3: rgba(34, 211, 238, 0.12);
+  --grid-line: rgba(15, 23, 42, 0.045);
+  --noise-opacity: 0.02;
+
+  --glow-accent: 0 0 0 1px rgba(37, 99, 235, 0.25), 0 6px 24px rgba(37, 99, 235, 0.18);
+  --glow-secondary: 0 0 0 1px rgba(124, 58, 237, 0.25), 0 6px 24px rgba(124, 58, 237, 0.18);
+  --glow-soft: 0 4px 20px rgba(37, 99, 235, 0.12);
+
+  /* ======================================================================= */
+  /* 4 - TYPOGRAPHY                                                          */
+  /* ======================================================================= */
+  /* No webfont is downloaded. `make demo` must run on a clean clone with no
+   * network, so a Google Fonts link would be a lie about the dependency list.
+   * These stacks prefer Geist/Inter when the machine already has them and fall
+   * back to a good system UI face otherwise - which on every target platform is
+   * a modern humanist sans, not Times. */
+  --font-ui: "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-ui);
   /* Money is ALWAYS this, always right-aligned, always tabular. A rupee column
    * whose digits do not line up is a rupee column nobody can scan. */
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo,
-    Consolas, "Liberation Mono", monospace;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", "JetBrains Mono",
+    "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  --text-xs: 0.6875rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-md: 1.0625rem;
-  --text-lg: 1.375rem;
-  --text-xl: 1.875rem;
-  --text-2xl: 2.5rem;
-  --text-3xl: 3.5rem;
+  /* Fluid display scale. clamp() means one token covers 390px to 4K without a
+   * media query, and nothing ever overflows on a phone. */
+  --text-display: clamp(2.75rem, 7vw, 5rem); /* 44 -> 80 */
+  --text-h1: clamp(2.25rem, 5vw, 4rem); /* 36 -> 64 */
+  --text-h2: clamp(1.75rem, 3.6vw, 3rem); /* 28 -> 48 */
+  --text-h3: clamp(1.375rem, 2.2vw, 2rem); /* 22 -> 32 */
 
-  --leading-tight: 1.15;
-  --leading-snug: 1.35;
-  --leading-normal: 1.55;
+  /* Fixed UI scale. Dense data needs predictable steps, not fluid ones. */
+  --text-xs: 0.75rem; /* 12 - caption */
+  --text-sm: 0.8125rem; /* 13 - small */
+  --text-base: 1rem; /* 16 - body */
+  --text-md: 1.125rem; /* 18 - lead body */
+  --text-lg: 1.375rem; /* 22 */
+  --text-xl: 1.875rem; /* 30 */
+  --text-2xl: 2.5rem; /* 40 */
+  --text-3xl: 3.5rem; /* 56 */
 
-  --tracking-tight: -0.02em;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+
+  --tracking-tighter: -0.03em;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0;
   --tracking-wide: 0.06em;
+  --tracking-widest: 0.14em;
 
-  /* ---- space: an 8pt scale, and nothing between the steps ---------------- */
-  --s-1: 0.25rem;
-  --s-2: 0.5rem;
-  --s-3: 0.75rem;
-  --s-4: 1rem;
-  --s-5: 1.5rem;
-  --s-6: 2rem;
-  --s-7: 3rem;
-  --s-8: 4rem;
-  --s-9: 6rem;
+  /* ======================================================================= */
+  /* 5 - SPACE                                                               */
+  /* One 4pt scale. Nothing between the steps, ever.                         */
+  /* ======================================================================= */
+  --space-1: 0.25rem; /* 4 */
+  --space-2: 0.5rem; /* 8 */
+  --space-3: 0.75rem; /* 12 */
+  --space-4: 1rem; /* 16 */
+  --space-5: 1.25rem; /* 20 */
+  --space-6: 1.5rem; /* 24 */
+  --space-8: 2rem; /* 32 */
+  --space-10: 2.5rem; /* 40 */
+  --space-12: 3rem; /* 48 */
+  --space-16: 4rem; /* 64 */
+  --space-20: 5rem; /* 80 */
+  --space-24: 6rem; /* 96 */
+  --space-32: 8rem; /* 128 */
 
-  /* ---- one radius scale, two shadows. Nothing else. --------------------- */
-  --r-1: 3px;
-  --r-2: 6px;
-  --r-3: 10px;
-  --r-full: 999px;
+  /* Legacy aliases. The eight existing screens are written against these and
+   * every one maps to an identical value on the scale above, so they are a
+   * naming convenience rather than a second system. */
+  --s-1: var(--space-1);
+  --s-2: var(--space-2);
+  --s-3: var(--space-3);
+  --s-4: var(--space-4);
+  --s-5: var(--space-6);
+  --s-6: var(--space-8);
+  --s-7: var(--space-12);
+  --s-8: var(--space-16);
+  --s-9: var(--space-24);
 
-  --shadow-1: 0 1px 2px rgba(22, 19, 14, 0.06), 0 1px 3px rgba(22, 19, 14, 0.04);
-  --shadow-2: 0 4px 12px rgba(22, 19, 14, 0.1), 0 2px 4px rgba(22, 19, 14, 0.06);
+  /* ======================================================================= */
+  /* 6 - RADIUS                                                              */
+  /* buttons + inputs 10 · cards 16 · panels 24 · badges pill                */
+  /* ======================================================================= */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
 
-  /* ---- motion ------------------------------------------------------------ */
-  --dur-fast: 140ms;
-  --dur: 240ms;
+  --r-1: 4px;
+  --r-2: var(--radius-sm);
+  --r-3: var(--radius-md);
+  --r-4: var(--radius-lg);
+  --r-5: var(--radius-xl);
+  --r-full: var(--radius-pill);
+
+  /* ======================================================================= */
+  /* 7 - DEPTH                                                               */
+  /* Three levels, and they mean something: flat content, a surface, a thing */
+  /* that floats. A shadow that does not encode elevation is just dirt.      */
+  /* ======================================================================= */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-2: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow-3: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --shadow-4: 0 24px 64px rgba(15, 23, 42, 0.16), 0 8px 16px rgba(15, 23, 42, 0.08);
+
+  --blur-sm: 8px;
+  --blur-md: 16px;
+  --blur-lg: 24px;
+  --blur-xl: 40px;
+
+  /* ======================================================================= */
+  /* 8 - MOTION                                                              */
+  /* micro 100-150 · normal 200-400 · large 500-800                          */
+  /* ======================================================================= */
+  --dur-micro: 120ms;
+  --dur-fast: 160ms;
+  --dur: 280ms;
   --dur-slow: 480ms;
-  /* The entrance curve: fast out of the gate, settles gently. */
+  --dur-large: 700ms;
+
+  /* Entrance: fast out of the gate, settles gently. The default for anything
+   * that appears. */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Spring, for things with physical weight - toggles, cards picking themselves
+   * up. Slight overshoot only; a UI that bounces twice is a UI that is showing off. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --header-h: 3.5rem;
+  /* ======================================================================= */
+  /* 9 - Z-INDEX                                                             */
+  /* Named, so nobody ever writes z-index: 9999 again.                       */
+  /* ======================================================================= */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-nav: 40;
+  --z-drawer: 60;
+  --z-overlay: 80;
+  --z-modal: 100;
+  --z-toast: 120;
+  --z-tooltip: 140;
+
+  /* ======================================================================= */
+  /* 10 - LAYOUT                                                             */
+  /* Breakpoints are documented here and used literally in media queries;    */
+  /* CSS cannot interpolate a custom property into a media query, so this    */
+  /* block is the single source of truth that keeps them consistent.         */
+  /* ======================================================================= */
+  --bp-sm: 30rem; /* 480  */
+  --bp-md: 48rem; /* 768  */
+  --bp-lg: 64rem; /* 1024 */
+  --bp-xl: 80rem; /* 1280 */
+
+  --header-h: 3.75rem;
+  --sidebar-w: 15rem;
   --max-w: 88rem;
+  --max-w-prose: 42rem;
 }
 
-/* ---- terminal (dark) ----------------------------------------------------
- * Only the semantic layer is redefined. The palette ramps stay put, so a change
- * to --green-500 moves both themes together and they cannot drift apart.
- * ------------------------------------------------------------------------ */
+/* ========================================================================= */
+/* DARK - the designed theme                                                 */
+/* ========================================================================= */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14120f;
-    --bg-raised: #1c1a15;
-    --bg-sunken: #100e0c;
-    --bg-hover: #26231c;
-    --bg-active: #322d24;
+    --bg: var(--void-950);
+    --bg-raised: var(--void-850);
+    --bg-sunken: var(--void-900);
+    --bg-hover: var(--void-750);
+    --bg-active: var(--void-700);
 
-    --fg: #f2ece1;
-    --fg-muted: #a89e8d;
-    --fg-subtle: #7d7466;
-    --fg-inverse: #14120f;
+    --fg: var(--slate-050);
+    --fg-muted: var(--slate-300);
+    --fg-subtle: var(--slate-400);
+    --fg-inverse: var(--void-950);
 
-    --rule: #2d2922;
-    --rule-strong: #423c31;
+    --rule: rgba(255, 255, 255, 0.08);
+    --rule-strong: rgba(255, 255, 255, 0.16);
 
-    --accent: var(--gold-300);
-    --accent-bg: #3a2e11;
-    --info: var(--blue-400);
-    --info-bg: #10303e;
+    --accent: var(--blue-400);
+    --accent-hover: var(--blue-300);
+    --accent-bg: rgba(91, 140, 255, 0.14);
+    --accent-fg: var(--void-950);
 
-    --ok: #6cc48a;
-    --ok-bg: #14301f;
+    --secondary: var(--violet-400);
+    --secondary-bg: rgba(139, 92, 246, 0.14);
+
+    --info: var(--cyan-400);
+    --info-bg: rgba(34, 211, 238, 0.12);
+
+    --ok: var(--green-400);
+    --ok-bg: rgba(34, 197, 94, 0.14);
     --warn: var(--amber-400);
-    --warn-bg: #362708;
-    --bad: #e8776a;
-    --bad-bg: #3a1713;
+    --warn-bg: rgba(245, 158, 11, 0.14);
+    --bad: var(--red-400);
+    --bad-bg: rgba(239, 68, 68, 0.14);
 
-    --state-matched: #6cc48a;
-    --state-matched-bg: #14301f;
+    --state-matched: var(--green-400);
+    --state-matched-bg: rgba(34, 197, 94, 0.14);
     --state-auto-posted: var(--blue-400);
-    --state-auto-posted-bg: #10303e;
+    --state-auto-posted-bg: rgba(91, 140, 255, 0.14);
     --state-needs-review: var(--amber-400);
-    --state-needs-review-bg: #362708;
-    --state-abstained: #a89e8d;
-    --state-abstained-bg: #26231c;
-    --state-exception: #e8776a;
-    --state-exception-bg: #3a1713;
-    --state-denied: #f2ece1;
-    --state-denied-bg: #423c31;
+    --state-needs-review-bg: rgba(245, 158, 11, 0.14);
+    --state-abstained: var(--slate-400);
+    --state-abstained-bg: rgba(148, 163, 184, 0.12);
+    --state-exception: var(--red-400);
+    --state-exception-bg: rgba(239, 68, 68, 0.14);
+    --state-denied: var(--slate-050);
+    --state-denied-bg: rgba(255, 255, 255, 0.16);
 
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
-    --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.55), 0 2px 5px rgba(0, 0, 0, 0.4);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-bg-strong: rgba(255, 255, 255, 0.07);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --scrim: rgba(5, 7, 13, 0.72);
+  --stream-payments: #5b8cff;
+  --stream-bank: #a78bfa;
+  --stream-ledger: #22d3ee;
+  --stream-core: #f8fafc;
+    --stream-payments: #5b8cff;
+    --stream-bank: #a78bfa;
+    --stream-ledger: #22d3ee;
+    --stream-core: #f8fafc;
+
+    --aurora-1: rgba(91, 140, 255, 0.3);
+    --aurora-2: rgba(139, 92, 246, 0.24);
+    --aurora-3: rgba(34, 211, 238, 0.18);
+    --grid-line: rgba(255, 255, 255, 0.035);
+    --noise-opacity: 0.035;
+
+    --glow-accent: 0 0 0 1px rgba(91, 140, 255, 0.35), 0 8px 32px rgba(91, 140, 255, 0.28);
+    --glow-secondary: 0 0 0 1px rgba(167, 139, 250, 0.35),
+      0 8px 32px rgba(139, 92, 246, 0.26);
+    --glow-soft: 0 4px 24px rgba(91, 140, 255, 0.18);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.6), 0 2px 5px rgba(0, 0, 0, 0.45);
+    --shadow-3: 0 12px 36px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.5);
+    --shadow-4: 0 28px 72px rgba(0, 0, 0, 0.8), 0 10px 20px rgba(0, 0, 0, 0.55);
   }
 }
 
 /* An explicit choice beats the system preference, in both directions. */
 :root[data-theme="dark"] {
-  --bg: #14120f;
-  --bg-raised: #1c1a15;
-  --bg-sunken: #100e0c;
-  --bg-hover: #26231c;
-  --bg-active: #322d24;
+  --bg: var(--void-950);
+  --bg-raised: var(--void-850);
+  --bg-sunken: var(--void-900);
+  --bg-hover: var(--void-750);
+  --bg-active: var(--void-700);
 
-  --fg: #f2ece1;
-  --fg-muted: #a89e8d;
-  --fg-subtle: #7d7466;
-  --fg-inverse: #14120f;
+  --fg: var(--slate-050);
+  --fg-muted: var(--slate-300);
+  --fg-subtle: var(--slate-400);
+  --fg-inverse: var(--void-950);
 
-  --rule: #2d2922;
-  --rule-strong: #423c31;
+  --rule: rgba(255, 255, 255, 0.08);
+  --rule-strong: rgba(255, 255, 255, 0.16);
 
-  --accent: var(--gold-300);
-  --accent-bg: #3a2e11;
-  --info: var(--blue-400);
-  --info-bg: #10303e;
+  --accent: var(--blue-400);
+  --accent-hover: var(--blue-300);
+  --accent-bg: rgba(91, 140, 255, 0.14);
+  --accent-fg: var(--void-950);
 
-  --ok: #6cc48a;
-  --ok-bg: #14301f;
+  --secondary: var(--violet-400);
+  --secondary-bg: rgba(139, 92, 246, 0.14);
+
+  --info: var(--cyan-400);
+  --info-bg: rgba(34, 211, 238, 0.12);
+
+  --ok: var(--green-400);
+  --ok-bg: rgba(34, 197, 94, 0.14);
   --warn: var(--amber-400);
-  --warn-bg: #362708;
-  --bad: #e8776a;
-  --bad-bg: #3a1713;
+  --warn-bg: rgba(245, 158, 11, 0.14);
+  --bad: var(--red-400);
+  --bad-bg: rgba(239, 68, 68, 0.14);
 
-  --state-matched: #6cc48a;
-  --state-matched-bg: #14301f;
+  --state-matched: var(--green-400);
+  --state-matched-bg: rgba(34, 197, 94, 0.14);
   --state-auto-posted: var(--blue-400);
-  --state-auto-posted-bg: #10303e;
+  --state-auto-posted-bg: rgba(91, 140, 255, 0.14);
   --state-needs-review: var(--amber-400);
-  --state-needs-review-bg: #362708;
-  --state-abstained: #a89e8d;
-  --state-abstained-bg: #26231c;
-  --state-exception: #e8776a;
-  --state-exception-bg: #3a1713;
-  --state-denied: #f2ece1;
-  --state-denied-bg: #423c31;
+  --state-needs-review-bg: rgba(245, 158, 11, 0.14);
+  --state-abstained: var(--slate-400);
+  --state-abstained-bg: rgba(148, 163, 184, 0.12);
+  --state-exception: var(--red-400);
+  --state-exception-bg: rgba(239, 68, 68, 0.14);
+  --state-denied: var(--slate-050);
+  --state-denied-bg: rgba(255, 255, 255, 0.16);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.55), 0 2px 5px rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-bg-strong: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --scrim: rgba(5, 7, 13, 0.72);
+
+  --aurora-1: rgba(91, 140, 255, 0.3);
+  --aurora-2: rgba(139, 92, 246, 0.24);
+  --aurora-3: rgba(34, 211, 238, 0.18);
+  --grid-line: rgba(255, 255, 255, 0.035);
+  --noise-opacity: 0.035;
+
+  --glow-accent: 0 0 0 1px rgba(91, 140, 255, 0.35), 0 8px 32px rgba(91, 140, 255, 0.28);
+  --glow-secondary: 0 0 0 1px rgba(167, 139, 250, 0.35),
+    0 8px 32px rgba(139, 92, 246, 0.26);
+  --glow-soft: 0 4px 24px rgba(91, 140, 255, 0.18);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.6), 0 2px 5px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 12px 36px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.5);
+  --shadow-4: 0 28px 72px rgba(0, 0, 0, 0.8), 0 10px 20px rgba(0, 0, 0, 0.55);
 }
 
-/* Reduced motion is a hard switch, not a suggestion.
- *
- * Every animation in the product is written to respect this, and the guard lives
- * here rather than in each component so it cannot be forgotten. A judge with
- * reduce-motion on must still see everything - the hero degrades to a static
- * composition, counters jump to their final value, and nothing is lost but the
- * movement itself. */
+/* The landing page commits to the dark identity regardless of system preference.
+ * It is a single cinematic composition built around a lit 3D scene, and there is no
+ * honest light-mode version of "deep space" - a light aurora over a white ground is
+ * a different design, not the same one adapted. The dashboard, which is a tool people
+ * use for hours, keeps both themes. */
+:root[data-surface="cinematic"] {
+  color-scheme: dark;
+}
+
+/* ========================================================================= */
+/* Reduced motion is a hard switch, not a suggestion.                        */
+/*                                                                           */
+/* Every animation in the product respects this, and the guard lives here    */
+/* rather than in each component so it cannot be forgotten. Someone with     */
+/* reduce-motion on must still see EVERYTHING - the 3D hero renders a single */
+/* composed frame instead of animating, counters jump to their final value,  */
+/* scroll reveals resolve to their finished state. Nothing is withheld but   */
+/* the movement itself.                                                      */
+/* ========================================================================= */
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --dur-micro: 0.01ms;
     --dur-fast: 0.01ms;
     --dur: 0.01ms;
     --dur-slow: 0.01ms;
+    --dur-large: 0.01ms;
   }
 
   *,

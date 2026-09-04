@@ -120,6 +120,11 @@ def t_typecheck(_: list[str]) -> None:
 def t_eval(args: list[str]) -> None:
     banner("eval")
     py("-m", "scripts.eval_run", *args)
+    # The landing page quotes measured figures, and it gets them from a generated
+    # module rather than from hand-typed HTML. Regenerating here means the page cannot
+    # be left asserting a number that this very run just changed. The output is
+    # deterministic - no timestamp - so `make eval` stays byte-identical.
+    py("-m", "scripts.gen_web_metrics")
 
 
 @target("demo", "The full offline narrative demo on committed seed data (<90s, no keys)")

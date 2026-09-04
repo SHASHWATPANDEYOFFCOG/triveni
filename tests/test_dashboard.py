@@ -19,7 +19,9 @@ exists.
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -331,9 +333,17 @@ def test_every_dashboard_asset_is_served() -> None:
 
     from api.main import app
 
-    paths = ["/app/", "/app/styles/tokens.css", "/app/styles/app.css", "/app/styles/screens.css"]
-    paths += [f"/app/js/{path.name}" for path in sorted((WEB / "js").glob("*.js"))]
-    paths += [f"/app/js/screens/{path.name}" for path in SCREENS]
+    # Derived from the files on disk and from what the HTML actually asks for, rather
+    # than a hand-kept list. A hand-kept list is how a new stylesheet ships unserved:
+    # the page 404s one file, the layout quietly degrades, and the test stays green.
+    paths = ["/app/"]
+    paths += [f"/app/{p.relative_to(WEB).as_posix()}" for p in sorted(WEB.rglob("*.css"))]
+    paths += [f"/app/{p.relative_to(WEB).as_posix()}" for p in sorted(WEB.rglob("*.js"))]
+
+    for page in sorted(WEB.glob("*.html")):
+        paths.append(f"/app/{page.name}")
+        for ref in re.findall(r'(?:href|src)="\./([^"]+)"', read(page)):
+            paths.append(f"/app/{ref}")
 
     with TestClient(app) as client:
         for path in paths:
@@ -395,36 +405,552 @@ def test_hidden_actually_hides() -> None:
     """
     # Comments first: this rule is explained in a comment that quotes the very selector
     # being searched for, so an unstripped scan passes on the prose alone.
-    app = re.sub(r"/\*.*?\*/", "", read(WEB / "styles" / "app.css"), flags=re.S)
-    rule = re.search(r"\[hidden\]\s*\{[^}]*\}", app)
-    assert rule is not None, "app.css must define a global [hidden] rule"
-    assert re.search(r"display:\s*none\s*!important", rule.group(0)), (
+    sheets = {
+        path.name: _strip_css_comments(read(path))
+        for path in sorted((WEB / "styles").glob("*.css"))
+    }
+    guards = [
+        match.group(0)
+        for css in sheets.values()
+        for match in re.finditer(r"\[hidden\]\s*\{[^}]*\}", css)
+    ]
+    assert guards, "some stylesheet must define a global [hidden] rule"
+    assert any(re.search(r"display:\s*none\s*!important", g) for g in guards), (
         "[hidden] must be !important, or any component setting `display` defeats it"
     )
 
-    # Non-vacuity: the trap this guards against is still present, so deleting the rule
-    # would genuinely reintroduce an undismissable overlay rather than change nothing.
-    screens = re.sub(r"/\*.*?\*/", "", read(WEB / "styles" / "screens.css"), flags=re.S)
-    overlay = re.search(r"\.help-overlay\s*\{[^}]*\}", screens)
-    assert overlay is not None and "display:" in overlay.group(0), (
-        "expected .help-overlay to still set display - if it no longer does, this test "
+    # Non-vacuity, stated as the general trap rather than one selector: some author
+    # rule still sets `display` on a class that JS toggles with `.hidden`. While that
+    # is true, deleting the guard reintroduces an undismissable overlay.
+    toggled = {"overlay", "palette", "btn", "rail", "scrim"}
+    trapped = {
+        name
+        for name in toggled
+        for css in sheets.values()
+        if re.search(rf"\.{name}\s*(?:,[^{{]*)?\{{[^}}]*display:", css)
+    }
+    assert trapped, (
+        "no class that JS hides via `.hidden` sets `display` any more - this test now "
         "proves nothing and should be re-pointed at a rule that does"
     )
     assert 'id="help"' in read(WEB / "index.html")
-    assert "overlay.hidden = true" in read(WEB / "js" / "app.js")
+    assert "element.hidden = true" in read(WEB / "js" / "ui" / "dialog.js")
 
 
 def test_the_help_dialog_can_be_dismissed_every_way_it_is_opened() -> None:
     """Escape, the close button and a click on the backdrop must all reach `closeHelp`,
     and `closeHelp` must clear the attribute *before* it moves focus - so a throw on the
     focus call cannot strand the dialog open on top of the page."""
-    source = read(WEB / "js" / "app.js")
-    assert 'event.key === "Escape"' in source and "closeHelp()" in source
-    assert 'event.target.id === "help-close"' in source
-    assert "event.target === overlay" in source
+    source = read(WEB / "js" / "ui" / "dialog.js")
 
-    body = source[source.index("function closeHelp()") :]
-    body = body[: body.index("\n}")]
-    assert body.index("overlay.hidden = true") < body.index(".focus()"), (
-        "clear `hidden` before moving focus, so a focus failure cannot strand the dialog"
+    # The four obligations a modal owes a keyboard user. Every dialog in the product
+    # goes through this one module, so asserting them here covers all of them - and
+    # anything added later gets them by construction rather than by remembering.
+    assert 'event.key === "Escape"' in source, "Escape must close"
+    assert 'event.key !== "Tab"' in source, "Tab must be trapped inside the dialog"
+    assert "requestAnimationFrame(() => target.focus?.())" in source, (
+        "focus must move into the dialog, or a keyboard user is stranded outside it"
+    )
+    assert "if (event.target === element) close()" in source, "clicking the scrim closes"
+    assert "opener?.isConnected" in source, (
+        "focus must return to the opener, and only while it is still in the document"
+    )
+
+    body = source[source.index("function close()") :]
+    body = body[: body.index("\n  }")]
+    assert body.index("element.hidden = true") < body.index("opener?.isConnected"), (
+        "clear `hidden` before restoring focus, so a focus failure cannot strand the "
+        "dialog open on top of the page"
+    )
+
+    # And the shell must actually route its dialogs through it.
+    shell = read(WEB / "js" / "app.js")
+    assert "openDialog(overlay" in shell, "the help sheet must use the shared dialog"
+    assert "openDialog(root" in read(WEB / "js" / "ui" / "palette.js"), (
+        "the command palette must use the shared dialog"
+    )
+
+
+def _strip_css_comments(text: str) -> str:
+    return re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+
+
+def test_every_design_token_referenced_is_defined() -> None:
+    """A `var(--typo)` fails silently - the property is simply dropped, and the element
+    renders with an inherited or initial value that often looks *almost* right.
+
+    This is the failure mode a re-skin invites: token names get re-pointed, one consumer
+    is missed, and a single card keeps a colour from the old identity. Nothing throws,
+    nothing logs, and it is invisible unless you happen to look at that card.
+    """
+    tokens = _strip_css_comments(read(WEB / "styles" / "tokens.css"))
+    defined = set(re.findall(r"(--[a-z0-9-]+)\s*:", tokens))
+    assert len(defined) > 100, "tokens.css should define the whole system"
+
+    unresolved: dict[str, set[str]] = {}
+    for path in [*WEB.rglob("*.css"), *WEB.rglob("*.js"), *WEB.rglob("*.html")]:
+        if path.name == "tokens.css":
+            continue
+        text = _strip_css_comments(read(path))
+        # A file may define its own scoped custom properties; those are legitimate.
+        local = set(re.findall(r"(--[a-z0-9-]+)\s*:", text))
+        # `var(--x, fallback)` is not an unresolved reference - the fallback IS the
+        # definition, and that is the whole point of the syntax. Only a bare `var(--x)`
+        # with nothing behind it fails silently, dropping the declaration and leaving
+        # the element on an inherited value that often looks almost right.
+        for name, delimiter in re.findall(r"var\(\s*(--[a-z0-9-]+)\s*([,)])", text):
+            if delimiter == ",":
+                continue
+            if name not in defined and name not in local:
+                unresolved.setdefault(name, set()).add(path.name)
+
+    assert not unresolved, f"var() references with no definition: {unresolved}"
+
+
+def test_the_token_system_covers_every_category() -> None:
+    """Tokens are only a system if nothing has to reach outside them. Each category
+    below exists because a component needed it and would otherwise hard-code a literal."""
+    tokens = _strip_css_comments(read(WEB / "styles" / "tokens.css"))
+    for name in (
+        "--space-4",       # spacing scale
+        "--radius-md",     # radius scale
+        "--shadow-3",      # elevation
+        "--blur-lg",       # depth
+        "--dur-micro",     # motion
+        "--ease-spring",   # motion curves
+        "--z-modal",       # stacking
+        "--bp-lg",         # breakpoints
+        "--glass-bg",      # glass
+        "--aurora-1",      # background
+        "--glow-accent",   # glow
+        "--text-display",  # type scale
+        "--scrim",         # overlay
+    ):
+        assert f"{name}:" in tokens, f"{name} must be a token, not a literal"
+
+
+def test_brand_colour_never_carries_state_meaning() -> None:
+    """Green, amber and red mean one thing each. If the brand blue could also mean
+    "healthy", the screen becomes unreadable the moment something goes wrong, because
+    the eye can no longer separate decoration from alarm.
+
+    So the six row states must resolve to the semantic ramps, never to blue or violet -
+    with one deliberate exception: `auto-posted` IS blue, because "the machine did this
+    unsupervised" is a statement about *who acted*, not about whether it went well.
+    """
+    tokens = _strip_css_comments(read(WEB / "styles" / "tokens.css"))
+    ramps = dict(re.findall(r"(--[a-z]+-\d{3})\s*:\s*(#[0-9a-fA-F]{6})", tokens))
+
+    def hue_of(value: str) -> tuple[float, float] | None:
+        """(hue in degrees, saturation) for a token value, or None if not a colour.
+
+        Spelling is not the property under test - the dark theme writes
+        `rgba(34, 197, 94, 0.14)` where the light theme writes `var(--green-500)`, and
+        those are the same colour. Only the hue can tell you whether a state token has
+        drifted onto the brand ramp.
+        """
+        value = value.strip()
+        if value.startswith("var("):
+            value = ramps.get(value[4:].split(")")[0].strip(), "")
+        if match := re.match(r"#([0-9a-fA-F]{6})$", value):
+            rgb = [int(match.group(1)[i : i + 2], 16) for i in (0, 2, 4)]
+        elif match := re.match(r"rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)", value):
+            rgb = [int(g) for g in match.groups()]
+        else:
+            return None
+        r, g, b = (c / 255 for c in rgb)
+        high, low = max(r, g, b), min(r, g, b)
+        span = high - low
+        if span == 0:
+            return 0.0, 0.0
+        if high == r:
+            hue = 60 * (((g - b) / span) % 6)
+        elif high == g:
+            hue = 60 * ((b - r) / span + 2)
+        else:
+            hue = 60 * ((r - g) / span + 4)
+        return hue, span / high
+
+    def in_band(hue: float, low: float, high: float) -> bool:
+        return low <= hue <= high if low <= high else hue >= low or hue <= high
+
+    bands = {"green": (90.0, 165.0), "amber": (20.0, 60.0), "red": (345.0, 15.0)}
+
+    # The four states that carry semantic colour must land in their own hue band.
+    # `auto-posted` is deliberately blue: "the machine did this unsupervised" is a
+    # statement about who acted, not about whether it went well.
+    for state, band in (
+        ("--state-matched", bands["green"]),
+        ("--state-needs-review", bands["amber"]),
+        ("--state-exception", bands["red"]),
+        ("--state-auto-posted", (195.0, 255.0)),
+    ):
+        values = re.findall(rf"{state}:\s*([^;]+);", tokens)
+        assert values, f"{state} must be defined in every theme"
+        for value in values:
+            resolved = hue_of(value)
+            assert resolved is not None, f"{state} = {value.strip()!r} is not a colour"
+            hue, saturation = resolved
+            assert saturation > 0.3, f"{state} = {value.strip()!r} is too washed out to read"
+            assert in_band(hue, *band), (
+                f"{state} resolves to hue {hue:.0f}deg, outside {band} - a state colour "
+                "has drifted onto the wrong ramp"
+            )
+
+    # And the two neutral states must never *impersonate* a semantic one.
+    for state in ("--state-abstained", "--state-denied"):
+        for value in re.findall(rf"{state}:\s*([^;]+);", tokens):
+            resolved = hue_of(value)
+            assert resolved is not None, f"{state} = {value.strip()!r} is not a colour"
+            hue, saturation = resolved
+            if saturation <= 0.35:
+                continue  # neutral by construction
+            for name, band in bands.items():
+                assert not in_band(hue, *band), (
+                    f"{state} resolves to a saturated {name} (hue {hue:.0f}deg) and will "
+                    "read as a state it does not mean"
+                )
+
+
+# --------------------------------------------------------------------------- #
+# The landing page, and the numbers on it
+# --------------------------------------------------------------------------- #
+def test_the_landing_page_numbers_match_metrics_json() -> None:
+    """`make eval` produces the numbers; a generator writes them into a module; the
+    page imports it. This asserts the committed module has not drifted from
+    `metrics.json` - which is the only way a figure on a marketing page can quietly
+    outlive the measurement that justified it."""
+    result = subprocess.run(
+        [sys.executable, "-m", "scripts.gen_web_metrics", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_the_landing_page_hard_codes_no_measured_figure() -> None:
+    """The page must contain ids, not numbers.
+
+    A figure typed into the HTML is a figure that survives its own refutation. Every
+    measured value is written in by `landing.js` from the generated module, so this
+    asserts none of them appears as a literal in the markup - if one did, `make eval`
+    could change it and the page would keep saying the old thing.
+    """
+    import json
+
+    html = read(WEB / "landing.html")
+    payload = json.loads(read(ROOT / "metrics.json"))
+
+    offenders = []
+    for row in payload["metrics"]:
+        value = float(row["value"])
+        # The rendered forms a hand-typed claim would take.
+        candidates = {f"{value * 100:.2f}%", f"{value:.4f}"}
+        if value >= 1:
+            candidates.add(f"{value:,.0f}")
+            candidates.add(f"{value:.0f}")
+        for text in candidates:
+            # Two characters of context, so a bare "536" inside an unrelated string
+            # (a colour, a digest) is not mistaken for the row count.
+            if text in html and len(text) > 3:
+                offenders.append((row["name"], text))
+
+    assert not offenders, (
+        f"measured figures typed into landing.html: {offenders}. "
+        "Bind them to an id and let scripts/gen_web_metrics.py supply the value."
+    )
+
+
+def test_the_landing_page_binds_every_id_it_declares() -> None:
+    """Every `id="m-…"` placeholder in the HTML must be written to by landing.js, and
+    every binding in landing.js must have somewhere to land. Either half alone leaves
+    a silent em-dash on the page."""
+    html = read(WEB / "landing.html")
+    script = read(WEB / "js" / "landing.js")
+
+    placeholders = set(re.findall(r'id="(m-[a-z0-9-]+|p-[a-z-]+|hero-model-rate|ladder-model|before-amount)"', html))
+    written = set(re.findall(r'"(m-[a-z0-9-]+|p-[a-z-]+|hero-model-rate|ladder-model|before-amount)"', script))
+
+    assert placeholders - written == set(), (
+        f"ids in the HTML that nothing ever fills: {sorted(placeholders - written)}"
+    )
+    assert written - placeholders == set(), (
+        f"landing.js writes to ids that do not exist: {sorted(written - placeholders)}"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# The 3D engine
+# --------------------------------------------------------------------------- #
+def test_the_3d_maths_is_correct() -> None:
+    """Projection and rotation, checked as arithmetic under plain Node.
+
+    This is the answer to the gap that let an undismissable overlay ship past 74
+    static tests: rendering bugs are invisible to source analysis. Projection maths is
+    the part of a 3D scene that can be wrong in a way that still draws something
+    plausible - an inverted axis, a scale that grows with distance, a point behind the
+    camera mirrored onto the screen - and every one of those is checkable without a
+    browser, which is exactly why this scene is 120 lines of arithmetic rather than a
+    library.
+    """
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    result = subprocess.run(
+        [node, str(WEB / "js" / "3d" / "engine.test.mjs")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "assertions passed" in result.stdout
+
+
+def test_the_hero_scene_degrades_on_every_axis() -> None:
+    """A hero that costs a phone its battery is a bad trade for a first impression."""
+    source = read(WEB / "js" / "3d" / "confluence.js")
+
+    assert 'canvas.getContext?.("2d")' in source, (
+        "a missing 2D context must leave the CSS fallback, not throw"
+    )
+    assert "prefers-reduced-motion" in source, "reduced motion must compose one frame"
+    assert "IntersectionObserver" in source, "off-screen must pause the loop"
+    assert "visibilitychange" in source, "a hidden tab must pause the loop"
+    assert "hardwareConcurrency" in source, "particle count must scale to the device"
+    assert "Math.min(window.devicePixelRatio || 1, 2)" in source, (
+        "device pixel ratio must be capped, or a 3x phone paints 9x the pixels"
+    )
+    assert "Math.min(48, now - (last || now))" in source, (
+        "the frame delta must be clamped, or returning to a backgrounded tab "
+        "teleports every particle in a single frame"
+    )
+    # And the fallback must actually be a composed picture rather than an empty box.
+    assert "radial-gradient" in read(WEB / "styles" / "landing.css")
+
+
+# --------------------------------------------------------------------------- #
+# Accessibility
+# --------------------------------------------------------------------------- #
+def _srgb_to_linear(channel: float) -> float:
+    return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+
+def _luminance(hex_colour: str) -> float:
+    """WCAG relative luminance."""
+    value = hex_colour.lstrip("#")
+    r, g, b = (int(value[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    return (
+        0.2126 * _srgb_to_linear(r)
+        + 0.7152 * _srgb_to_linear(g)
+        + 0.0722 * _srgb_to_linear(b)
+    )
+
+
+def _contrast(a: str, b: str) -> float:
+    la, lb = _luminance(a), _luminance(b)
+    high, low = max(la, lb), min(la, lb)
+    return (high + 0.05) / (low + 0.05)
+
+
+def _composite(value: str, over: str) -> str:
+    """Flatten a possibly-translucent colour onto an opaque one.
+
+    The dark theme states its tints as `rgba(34, 197, 94, 0.14)`, which is the surface
+    showing through. Scoring text against that raw value would measure a colour nobody
+    ever sees - what the eye gets is the composite.
+    """
+    match = re.match(
+        r"rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,/\s]+([\d.]+))?\s*\)", value.strip()
+    )
+    if not match:
+        return value.strip()
+    r, g, b = (int(match.group(i)) for i in (1, 2, 3))
+    alpha = float(match.group(4)) if match.group(4) else 1.0
+    base = over.lstrip("#")
+    br, bg, bb = (int(base[i : i + 2], 16) for i in (0, 2, 4))
+    blend = lambda f, k: round(f * alpha + k * (1 - alpha))  # noqa: E731
+    return f"#{blend(r, br):02x}{blend(g, bg):02x}{blend(b, bb):02x}"
+
+
+def _resolve_theme(tokens: str, block: str) -> dict[str, str]:
+    """Flatten one theme block into name -> #rrggbb, following var() chains.
+
+    Ramps live on bare `:root`, and the dark blocks redefine only the semantic layer,
+    so a dark theme's `--fg` may point at a ramp defined a hundred lines earlier. This
+    resolves through that rather than giving up on the indirection.
+    """
+    ramps = dict(re.findall(r"(--[a-z]+-\d{3})\s*:\s*(#[0-9a-fA-F]{6})", tokens))
+
+    if block == "root":
+        body = tokens.split(":root {", 1)[1].split("\n}", 1)[0]
+    else:
+        body = tokens.split(block, 1)[1].split("\n}", 1)[0]
+
+    raw = dict(re.findall(r"(--[a-z0-9-]+)\s*:\s*([^;]+);", body))
+    # Semantic names not restated in a dark block inherit from :root.
+    if block != "root":
+        base = dict(
+            re.findall(
+                r"(--[a-z0-9-]+)\s*:\s*([^;]+);",
+                tokens.split(":root {", 1)[1].split("\n}", 1)[0],
+            )
+        )
+        raw = {**base, **raw}
+
+    resolved: dict[str, str] = {}
+    for name, value in raw.items():
+        seen = 0
+        while value.strip().startswith("var(") and seen < 6:
+            value = raw.get(value.strip()[4:].split(")")[0].strip()) or ramps.get(
+                value.strip()[4:].split(")")[0].strip(), ""
+            )
+            seen += 1
+            if value is None:
+                value = ""
+        value = (value or "").strip()
+        # rgba() is kept, not discarded. Dropping it silently skipped every state
+        # colour in the dark theme, which is where they are all stated as tints.
+        if re.fullmatch(r"#[0-9a-fA-F]{6}", value) or value.startswith("rgb"):
+            resolved[name] = value
+    return resolved
+
+
+@pytest.mark.parametrize(
+    "block", ["root", ':root[data-theme="dark"] {'], ids=["light", "dark"]
+)
+def test_text_meets_wcag_contrast_in_both_themes(block: str) -> None:
+    """Contrast is arithmetic, so it is checkable without a browser.
+
+    A palette can look right to the person who chose it and still be unreadable to
+    someone reading it on a laptop in daylight. These are the pairings that actually
+    carry text in the product; each is held to the WCAG AA ratio for its role - 4.5:1
+    for body text, 3:1 for large text and for non-text boundaries.
+    """
+    tokens = _strip_css_comments(read(WEB / "styles" / "tokens.css"))
+    theme = _resolve_theme(tokens, block)
+
+    pairs = [
+        ("--fg", "--bg", 4.5, "body text on the page"),
+        ("--fg", "--bg-raised", 4.5, "body text on a card"),
+        ("--fg-muted", "--bg", 4.5, "secondary text"),
+        ("--fg-muted", "--bg-raised", 4.5, "secondary text on a card"),
+        ("--fg-subtle", "--bg", 3.0, "labels and captions"),
+        ("--accent", "--bg", 3.0, "links and the brand colour"),
+        ("--accent", "--bg-raised", 3.0, "links on a card"),
+        # `.money.pos` and `.money.neg` render these as ordinary small text on a card,
+        # so they are held to 4.5:1 rather than to the 3:1 for large text.
+        ("--ok", "--bg-raised", 4.5, "a positive amount"),
+        ("--warn", "--bg-raised", 4.5, "a warning amount"),
+        ("--bad", "--bg-raised", 4.5, "a negative amount"),
+    ]
+
+    # The six row states are the load-bearing colour in the product, and they are
+    # drawn as 12px semibold text on their OWN tinted chip - not on the card. Checking
+    # them against the card was checking a pairing that never appears on screen, and
+    # it hid the fact that five of the six failed.
+    for name in ("matched", "auto-posted", "needs-review", "abstained", "exception", "denied"):
+        pairs.append((f"--state-{name}", f"--state-{name}-bg", 4.5, f"the {name} badge"))
+
+    failures = []
+    for foreground, background, minimum, what in pairs:
+        if foreground not in theme or background not in theme:
+            continue
+        # A tinted chip is usually `rgba(...)`, which shows the surface through it.
+        # Comparing against the raw token would score the text against a colour no eye
+        # ever sees; compositing over the surface is what the reader actually gets.
+        back = _composite(theme[background], theme.get("--bg-raised", "#ffffff"))
+        front = _composite(theme[foreground], back)
+        ratio = _contrast(front, back)
+        if ratio < minimum:
+            failures.append(
+                f"{what}: {foreground} on {background} is {ratio:.2f}:1, "
+                f"needs {minimum}:1"
+            )
+
+    assert not failures, "\n".join(failures)
+
+
+@pytest.mark.parametrize(
+    "page", sorted((Path(__file__).resolve().parent.parent / "web").glob("*.html")),
+    ids=lambda p: p.name,
+)
+def test_every_control_has_an_accessible_name(page: Path) -> None:
+    """A button whose only content is a glyph is, to a screen reader, a button called
+    "☰". Every icon-only control has to carry its name some other way."""
+    html = read(page)
+    nameless = []
+    for match in re.finditer(r"<button\b([^>]*)>(.*?)</button>", html, re.S):
+        attrs, inner = match.group(1), match.group(2)
+        if "aria-label" in attrs or "aria-labelledby" in attrs:
+            continue
+        # Text that is NOT inside an aria-hidden span counts as the name.
+        visible = re.sub(r'<[^>]*aria-hidden="true"[^>]*>.*?</[^>]+>', "", inner, flags=re.S)
+        if not re.sub(r"<[^>]+>", "", visible).strip():
+            nameless.append(match.group(0)[:90])
+    assert not nameless, f"controls with no accessible name in {page.name}: {nameless}"
+
+
+@pytest.mark.parametrize(
+    "page", sorted((Path(__file__).resolve().parent.parent / "web").glob("*.html")),
+    ids=lambda p: p.name,
+)
+def test_decorative_and_structural_markup_is_sound(page: Path) -> None:
+    html = read(page)
+
+    # A positive tabindex reorders the whole document's tab sequence and is almost
+    # always a mistake; -1 (programmatic focus) and 0 are fine.
+    assert not re.search(r'tabindex="[1-9]', html), "no positive tabindex"
+
+    # Canvas is decorative here - the data it draws is always stated in text nearby -
+    # so it must be hidden from assistive tech rather than announced as an empty box.
+    for match in re.finditer(r"<canvas\b([^>]*)>", html):
+        assert "aria-hidden" in match.group(1) or "aria-label" in match.group(1), (
+            f"canvas needs aria-hidden or a label: {match.group(0)}"
+        )
+
+    # Every page needs exactly one h1, and a skip link as the first focusable thing.
+    assert html.count("<h1") <= 1, "at most one h1 per page"
+    assert 'class="sr-only" href="#main"' in html, "every page needs a skip link"
+    assert 'id="main"' in html
+
+
+def test_reduced_motion_is_a_hard_switch() -> None:
+    """Someone with vestibular sensitivity must still see everything - only the
+    movement is withheld."""
+    tokens = read(WEB / "styles" / "tokens.css")
+    assert "prefers-reduced-motion: reduce" in tokens
+    assert "animation-duration: 0.01ms !important" in tokens
+
+    # And the pieces that animate in JavaScript must check it themselves, since a CSS
+    # duration override does nothing to a requestAnimationFrame loop.
+    for name in ("3d/confluence.js", "motion/reveal.js"):
+        assert "prefers-reduced-motion" in read(WEB / "js" / name), (
+            f"{name} animates in JS and must check the preference itself"
+        )
+
+    # Reveals must resolve to visible under reduced motion, never stay at opacity 0.
+    components = _strip_css_comments(read(WEB / "styles" / "components.css"))
+    guard = components.split("prefers-reduced-motion")[-1]
+    assert ".reveal" in guard and "opacity: 1" in guard
+
+
+def test_the_mobile_layout_is_designed_rather_than_shrunk() -> None:
+    """Below 64rem the rail becomes a drawer and the table becomes cards. Neither is
+    a smaller version of the desktop layout; both are different layouts."""
+    app = _strip_css_comments(read(WEB / "styles" / "app.css"))
+    components = _strip_css_comments(read(WEB / "styles" / "components.css"))
+
+    assert "max-width: 64rem" in app, "the rail must collapse at the large breakpoint"
+    assert "visibility: hidden" in app, (
+        "a closed drawer must leave the tab order - a transform alone keeps every "
+        "link inside it focusable behind the scrim"
+    )
+    assert 'data-rail="open"' in app
+
+    assert "table.responsive thead" in components, "tables must reflow to cards"
+    assert 'content: attr(data-label)' in components, (
+        "each reflowed cell must carry its own label, or the card is a column of "
+        "unlabelled values"
     )

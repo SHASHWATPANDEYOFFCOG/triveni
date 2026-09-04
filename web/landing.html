@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en" data-surface="cinematic" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Triveni · the AI Finance Controller</title>
+    <meta
+      name="description"
+      content="Three ledgers, one balanced set of books, with a statistically guaranteed error bound. Reconciliation, settlement decomposition and cash forecasting that never moves money."
+    />
+    <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./styles/base.css" />
+    <link rel="stylesheet" href="./styles/components.css" />
+    <link rel="stylesheet" href="./styles/landing.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%E0%A4%A4%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <a class="sr-only" href="#main">Skip to content</a>
+
+    <div class="backdrop" aria-hidden="true">
+      <div class="aurora aurora-1"></div>
+      <div class="aurora aurora-2"></div>
+      <div class="aurora aurora-3"></div>
+      <div class="grid-layer"></div>
+      <div class="noise-layer"></div>
+    </div>
+
+    <!-- 1 · Navbar ------------------------------------------------------- -->
+    <header class="site-nav" id="site-nav">
+      <div class="container inner">
+        <a class="brand" href="#top">
+          <span class="devanagari" aria-hidden="true">त्रि</span>
+          <span><span class="name">Triveni</span></span>
+        </a>
+
+        <nav class="site-links" aria-label="Sections">
+          <a class="link" href="#problem">Problem</a>
+          <a class="link" href="#loops">What it does</a>
+          <a class="link" href="#how">How</a>
+          <a class="link" href="#judgment">AI judgment</a>
+          <a class="link" href="#numbers">Numbers</a>
+          <a class="link" href="#architecture">Architecture</a>
+        </nav>
+
+        <div class="row">
+          <button class="btn ghost icon-btn" id="theme-toggle" aria-label="Switch theme">
+            <span aria-hidden="true" id="theme-icon">☾</span>
+          </button>
+          <a class="btn primary" href="./index.html">
+            Open the dashboard <span class="icon-shift" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <!-- 2 · Hero ------------------------------------------------------- -->
+      <section class="container hero" id="top">
+        <div class="hero-copy">
+          <span class="eyebrow">
+            <span class="status-dot" data-live="true" aria-hidden="true"></span>
+            Razorpay AI Buildathon 2026 · Track 04
+          </span>
+
+          <h1>
+            Three ledgers.<br />
+            One <span class="gradient-text">balanced</span> set of books.
+          </h1>
+
+          <p class="lead">
+            Triveni reconciles payments, the bank statement and the ledger into a single
+            close — then tells you, with a statistical guarantee, how often it is
+            allowed to be wrong. It explains every rupee of every netted settlement,
+            forecasts the cash, and writes every decision to a tamper-evident log.
+            It never moves money.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn primary lg" href="./index.html">
+              Open the dashboard <span class="icon-shift" aria-hidden="true">→</span>
+            </a>
+            <a class="btn outline lg" href="#how">See how it works</a>
+          </div>
+
+          <div class="row wrap" style="gap: var(--space-5)">
+            <span class="model-status">
+              <span class="status-dot" aria-hidden="true"></span> no credentials required
+            </span>
+            <span class="model-status">
+              <span id="hero-model-rate" class="num">—</span>&nbsp;of rows reach a model
+            </span>
+          </div>
+        </div>
+
+        <!-- 6 · the 3D hero. Three streams converge on one settlement core. -->
+        <div class="stage" id="stage">
+          <canvas id="confluence" aria-hidden="true"></canvas>
+          <div class="stage-legend card-glass" role="img" aria-label="Three ledgers converging into one settlement">
+            <span class="row"><i style="background: var(--stream-payments)"></i> Payments</span>
+            <span class="row"><i style="background: var(--stream-bank)"></i> Bank statement</span>
+            <span class="row"><i style="background: var(--stream-ledger)"></i> Ledger</span>
+          </div>
+          <span class="hint-drag" aria-hidden="true">move your cursor</span>
+        </div>
+      </section>
+
+      <hr class="divider" />
+
+      <!-- 3 · Problem ---------------------------------------------------- -->
+      <section class="container section" id="problem">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">The problem</span>
+          <h2>One credit lands. Nobody can say what it is made of.</h2>
+          <p class="lead">
+            A payment gateway does not settle transaction by transaction. It nets a
+            day's payments, subtracts its fees, and sends a single credit. The bank
+            statement shows one line. The ledger expects hundreds. Somebody has to
+            reconcile that by hand, every day, and explain the difference.
+          </p>
+        </div>
+
+        <div class="problem-grid">
+          <div class="panel-before" data-reveal>
+            <span class="eyebrow">What the bank shows you</span>
+            <div style="margin-top: var(--space-4)">
+              <div class="ledger-line">
+                <span>NEFT CR · RAZORPAY SOFTWARE PVT</span>
+                <span class="amount" id="before-amount">—</span>
+              </div>
+              <p class="faint" style="margin-top: var(--space-4); font-size: var(--text-sm)">
+                One line. No transaction ids, no fee breakdown, no GST split, no TDS.
+                Reconciling it means matching that single figure back to hundreds of
+                payments whose sum it is not — because fees came out in between.
+              </p>
+            </div>
+          </div>
+
+          <div class="panel-after" data-reveal data-reveal-delay="90">
+            <span class="eyebrow">What Triveni shows you</span>
+            <div style="margin-top: var(--space-4)">
+              <div class="ledger-line"><span>Gross payments captured</span><span class="amount">+ ₹12,48,300.00</span></div>
+              <div class="ledger-line"><span>Platform fee (MDR, fitted)</span><span class="amount">− ₹24,966.00</span></div>
+              <div class="ledger-line"><span>GST on the fee, not the sale</span><span class="amount">− ₹4,493.88</span></div>
+              <div class="ledger-line"><span>TDS 194-O</span><span class="amount">− ₹1,248.30</span></div>
+              <div class="ledger-line"><span>Refunds netted same day</span><span class="amount">− ₹18,400.00</span></div>
+              <div class="ledger-line total"><span>Settlement, balanced to the paise</span><span class="amount">₹11,99,191.82</span></div>
+              <p class="faint" style="margin-top: var(--space-4); font-size: var(--text-xs)">
+                Illustrative shape, matching the decomposition the Settlement screen
+                computes. The measured figures for the seed dataset are below, and every
+                one of them comes from <code>metrics.json</code>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · Solution: three loops -------------------------------------- -->
+      <section class="container section" id="loops">
+        <div class="section-head center" data-reveal>
+          <span class="eyebrow">The solution</span>
+          <h2>One spine. Three loops.</h2>
+          <p class="lead" style="text-align: center">
+            Not three products bolted together — one reconciliation result, read three
+            ways. Every loop shares the same money arithmetic, the same audit log and
+            the same refusal to move a rupee.
+          </p>
+        </div>
+
+        <div class="loops">
+          <article class="loop" data-reveal style="--loop-hue: var(--stream-payments)">
+            <span class="k">Close</span>
+            <h3>Reconcile</h3>
+            <p class="subtle">
+              Three-way matching across payments, bank and ledger. Deterministic keys
+              first, then blocking, then Fellegi–Sunter, then a global assignment that
+              solves the whole day at once instead of greedily.
+            </p>
+          </article>
+
+          <article class="loop" data-reveal data-reveal-delay="80" style="--loop-hue: var(--stream-bank)">
+            <span class="k">Explain</span>
+            <h3>Decompose</h3>
+            <p class="subtle">
+              Every netted settlement broken into gross, MDR, GST-on-fee, TDS and
+              refunds — with the rates <em>fitted</em> by robust NNLS from your own
+              data, not hard-coded. Ask it questions in English; it answers only from
+              rows it can cite.
+            </p>
+          </article>
+
+          <article class="loop" data-reveal data-reveal-delay="160" style="--loop-hue: var(--stream-ledger)">
+            <span class="k">Foresee</span>
+            <h3>Forecast</h3>
+            <p class="subtle">
+              Settlement-aware cash forecasting on the Indian bank calendar, with
+              conformal prediction intervals per horizon step. Scored on MASE and
+              pinball loss against a seasonal-naive baseline — never MAPE.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <hr class="divider" />
+
+      <!-- 5 · The five non-negotiables ----------------------------------- -->
+      <section class="container section">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">Non-negotiable</span>
+          <h2>Five rules, enforced in code rather than promised in a README.</h2>
+          <p class="lead">
+            Each one names the file and the line that makes it true. A rule you cannot
+            point at is a rule you do not have.
+          </p>
+        </div>
+
+        <div class="rules">
+          <article class="rule-card" data-reveal>
+            <span class="n">01</span>
+            <h3>Explainable</h3>
+            <p>Every action carries a reason string and its evidence. A record without one cannot be constructed.</p>
+            <code>core/audit/log.py</code>
+          </article>
+          <article class="rule-card" data-reveal data-reveal-delay="60">
+            <span class="n">02</span>
+            <h3>Bounded</h3>
+            <p>Hard caps in deterministic code. No configuration field can enable money movement — there is no such capability.</p>
+            <code>core/policy.py</code>
+          </article>
+          <article class="rule-card" data-reveal data-reveal-delay="120">
+            <span class="n">03</span>
+            <h3>Gated</h3>
+            <p>Materiality and a calibrated confidence threshold. Below it, the work routes to a human instead of guessing.</p>
+            <code>core/conformal.py</code>
+          </article>
+          <article class="rule-card" data-reveal data-reveal-delay="180">
+            <span class="n">04</span>
+            <h3>Audited</h3>
+            <p>An append-only Merkle log, RFC 6962 style. Posting requires a receipt carrying a verifiable inclusion proof.</p>
+            <code>core/guard.py</code>
+          </article>
+          <article class="rule-card" data-reveal data-reveal-delay="240">
+            <span class="n">05</span>
+            <h3>Measured</h3>
+            <p>Aggregate metrics on every run, including what being wrong would cost in rupees. Regressions get reported, not hidden.</p>
+            <code>scripts/eval_pipeline.py</code>
+          </article>
+        </div>
+      </section>
+
+      <!-- 6 · How it works ----------------------------------------------- -->
+      <section class="container section" id="how">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">How it works</span>
+          <h2>Six stages. The model appears in exactly one of them.</h2>
+          <p class="lead">
+            Each stage consumes what the previous one could not match, so the expensive
+            techniques only ever see the rows the cheap ones failed on. The ladder is
+            the reason a language model touches so few rows.
+          </p>
+        </div>
+
+        <ol class="ladder-steps" id="ladder">
+          <li class="step" data-reveal>
+            <span class="idx">1</span>
+            <span><strong>Deterministic keys</strong><span class="why">UTR and RRN. Exact, free, and correct by construction.</span></span>
+            <span class="count">no model</span>
+          </li>
+          <li class="step" data-reveal data-reveal-delay="60">
+            <span class="idx">2</span>
+            <span><strong>Blocking</strong><span class="why">Candidate generation, scored on pair completeness and reduction ratio.</span></span>
+            <span class="count">no model</span>
+          </li>
+          <li class="step" data-reveal data-reveal-delay="120">
+            <span class="idx">3</span>
+            <span><strong>Fellegi–Sunter linkage</strong><span class="why">Probabilistic record linkage with m and u fitted by EM.</span></span>
+            <span class="count">no model</span>
+          </li>
+          <li class="step" data-reveal data-reveal-delay="180">
+            <span class="idx">4</span>
+            <span><strong>Global assignment</strong><span class="why">Hungarian matching plus CP-SAT subset-sum for netted bundles. Proven optimal, not greedy.</span></span>
+            <span class="count">no model</span>
+          </li>
+          <li class="step" data-reveal data-reveal-delay="240">
+            <span class="idx">5</span>
+            <span><strong>Settlement decomposition</strong><span class="why">Fee algebra with rates fitted by robust NNLS. GST on the fee, never on the sale.</span></span>
+            <span class="count">no model</span>
+          </li>
+          <li class="step" data-reveal data-reveal-delay="300">
+            <span class="idx">6</span>
+            <span><strong>Residue</strong><span class="why">Only what nothing above could resolve. Free text is classified into a closed enum and one sentence is written.</span></span>
+            <span class="count" id="ladder-model">—</span>
+          </li>
+        </ol>
+      </section>
+
+      <hr class="divider" />
+
+      <!-- 7 · AI/ML explanation ------------------------------------------ -->
+      <section class="container section" id="judgment">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">AI judgment</span>
+          <h2>Use a model for language. Use mathematics for money.</h2>
+          <p class="lead">
+            The interesting engineering decision in this project is where the model is
+            <em>not</em>. Matching, fees, thresholds and allocation are optimisation and
+            statistics, because they have to be reproducible, auditable and provably
+            optimal. A language model is used where language is the actual problem.
+          </p>
+        </div>
+
+        <div class="card scroll-x" data-reveal>
+          <table class="judgment">
+            <caption class="sr-only">Where a model is and is not used, with the file that proves it</caption>
+            <thead>
+              <tr><th>Decision</th><th>Model?</th><th>What is used instead, and why</th><th>Proof</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Matching a payment to a bank line</td>
+                <td class="verdict" data-uses="no">No</td>
+                <td>Hungarian assignment with a priced no-match column, so declining is a modelled option rather than a fallback.</td>
+                <td><code>recon/assign.py</code></td>
+              </tr>
+              <tr>
+                <td>Splitting a netted settlement</td>
+                <td class="verdict" data-uses="no">No</td>
+                <td>Meet-in-the-middle and CP-SAT subset-sum. Integer paise, so equality is exact.</td>
+                <td><code>recon/subsetsum.py</code></td>
+              </tr>
+              <tr>
+                <td>Fee, GST and TDS rates</td>
+                <td class="verdict" data-uses="no">No</td>
+                <td>Robust non-negative least squares fitted from the data. A hallucinated basis point is a real loss.</td>
+                <td><code>recon/fees.py</code></td>
+              </tr>
+              <tr>
+                <td>The auto-post threshold</td>
+                <td class="verdict" data-uses="no">No</td>
+                <td>Split conformal prediction with the finite-sample correction, so the bound is a bound rather than an average.</td>
+                <td><code>core/conformal.py</code></td>
+              </tr>
+              <tr>
+                <td>Reading a messy bank narration</td>
+                <td class="verdict" data-uses="yes">Yes</td>
+                <td>Free text is genuinely a language problem. Output is parsed into a closed enum; anything else abstains.</td>
+                <td><code>recon/escalate.py</code></td>
+              </tr>
+              <tr>
+                <td>Answering a question in English</td>
+                <td class="verdict" data-uses="yes">Yes</td>
+                <td>The model selects among hand-written SQL templates. It never generates SQL, and every numeral is checked against the rows returned.</td>
+                <td><code>qa/compile.py</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="alert" data-tone="info" style="margin-top: var(--space-5)" data-reveal>
+          <span aria-hidden="true">◈</span>
+          <span>
+            <strong>Switch the model off entirely</strong> with
+            <code>TRIVENI_LLM_MODE=off</code> and matching is unchanged. The books still
+            close; the rows that needed language abstain into typed exceptions for a
+            human. That is the test of whether a system's intelligence is load-bearing
+            or decorative.
+          </span>
+        </div>
+      </section>
+
+      <!-- 8 · Statistics -------------------------------------------------- -->
+      <section class="container section" id="numbers">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">Measured, not claimed</span>
+          <h2>Every number here is produced by <code>make eval</code>.</h2>
+          <p class="lead">
+            Run it twice and you get byte-identical output. Nothing on this page was
+            typed by hand — the figures are generated from <code>metrics.json</code>,
+            and a test fails the build if they drift apart. The unflattering ones are
+            here at the same size as the flattering ones.
+          </p>
+        </div>
+
+        <div class="stat-band">
+          <div class="stat-big" data-reveal>
+            <span class="k">Rows reconciled</span>
+            <span class="v" id="m-rows">—</span>
+            <span class="note">payments, bank lines and ledger entries in the seed dataset</span>
+          </div>
+          <div class="stat-big" data-reveal data-reveal-delay="60">
+            <span class="k">Match rate</span>
+            <span class="v" id="m-match">—</span>
+            <span class="note">of rows placed into a match group</span>
+          </div>
+          <div class="stat-big" data-reveal data-reveal-delay="120">
+            <span class="k">Auto-post precision</span>
+            <span class="v" id="m-autoprec">—</span>
+            <span class="note">nothing wrong was posted without a human</span>
+          </div>
+          <div class="stat-big" data-reveal data-reveal-delay="180">
+            <span class="k">Auto-post coverage</span>
+            <span class="v" id="m-autocov">—</span>
+            <span class="note">at a fitted threshold of <span id="m-threshold">—</span></span>
+          </div>
+        </div>
+
+        <div class="stat-band" style="margin-top: var(--space-4)">
+          <div class="stat-big" data-reveal>
+            <span class="k">Realised error</span>
+            <span class="v" id="m-realised">—</span>
+            <span class="note">against a nominal bound of <span id="m-bound">—</span></span>
+          </div>
+          <div class="stat-big" data-tone="honest" data-reveal data-reveal-delay="60">
+            <span class="k">Recall</span>
+            <span class="v" id="m-recall">—</span>
+            <span class="note">pairwise, cross-source. Lower than the match rate, and not hidden behind it.</span>
+          </div>
+          <div class="stat-big" data-reveal data-reveal-delay="120">
+            <span class="k">Rows reaching a model</span>
+            <span class="v" id="m-model">—</span>
+            <span class="note"><span id="m-modeln">—</span> rows, <span id="m-calls">—</span> calls</span>
+          </div>
+          <div class="stat-big" data-tone="honest" data-reveal data-reveal-delay="180">
+            <span class="k">Exceptions raised</span>
+            <span class="v" id="m-exceptions">—</span>
+            <span class="note">routed to a human with evidence and a stated reason</span>
+          </div>
+        </div>
+
+        <p class="faint" style="margin-top: var(--space-5); font-size: var(--text-xs)" data-reveal>
+          Dataset <span id="m-dataset">—</span>, digest <code id="m-digest">—</code>.
+        </p>
+      </section>
+
+      <hr class="divider" />
+
+      <!-- 9 · Dashboard preview ------------------------------------------- -->
+      <section class="container section">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">The product</span>
+          <h2>Eight screens, and every one of them is wired to real output.</h2>
+          <p class="lead">
+            Nothing in the dashboard is a mock. The confluence animates the actual stage
+            ladder, the α slider re-fits the conformal threshold on every position, and
+            the audit screen will let you tamper with a record and watch the proof fail
+            at the exact index.
+          </p>
+        </div>
+
+        <div class="preview" data-reveal>
+          <div class="preview-chrome"><i></i><i></i><i></i>
+            <span class="faint" style="margin-left: var(--space-3); font-size: var(--text-xs)">
+              localhost:8000/app
+            </span>
+          </div>
+          <div class="preview-body">
+            <div class="preview-rail">
+              <span></span><span style="width: 60%"></span><span style="width: 75%"></span>
+              <span style="width: 55%"></span><span style="width: 80%"></span><span style="width: 62%"></span>
+            </div>
+            <div class="preview-main">
+              <div class="grid">
+                <div class="stat"><span class="label">Match rate</span><span class="value" id="p-match">—</span></div>
+                <div class="stat" data-tone="ok"><span class="label">Balanced</span><span class="value">16 / 16</span></div>
+                <div class="stat" data-tone="accent"><span class="label">Auto-post</span><span class="value" id="p-cov">—</span></div>
+              </div>
+              <div class="skeleton" style="height: 7rem"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row wrap" style="margin-top: var(--space-6); justify-content: center" data-reveal>
+          <a class="btn primary lg" href="./index.html">
+            Open the live dashboard <span class="icon-shift" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- 10 · Use cases -------------------------------------------------- -->
+      <section class="container section">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">Who it is for</span>
+          <h2>The part still done by hand.</h2>
+        </div>
+
+        <div class="use-grid">
+          <div class="card" data-reveal>
+            <h3 style="font-size: var(--text-md)">The finance team closing a month</h3>
+            <p class="subtle" style="margin-top: var(--space-3)">
+              Three-way reconciliation with an error bound they can quote to an auditor,
+              and an append-only log that proves what was decided and when.
+            </p>
+          </div>
+          <div class="card" data-reveal data-reveal-delay="70">
+            <h3 style="font-size: var(--text-md)">The founder asking where the money went</h3>
+            <p class="subtle" style="margin-top: var(--space-3)">
+              "Why is this settlement short?" answered in English, from rows it can cite —
+              and refused outright when the data cannot support an answer.
+            </p>
+          </div>
+          <div class="card" data-reveal data-reveal-delay="140">
+            <h3 style="font-size: var(--text-md)">The operator planning payroll</h3>
+            <p class="subtle" style="margin-top: var(--space-3)">
+              Cash forecast on the real bank calendar, including the second and fourth
+              Saturday, with intervals that state their own coverage honestly.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 11 · Architecture ----------------------------------------------- -->
+      <section class="container section" id="architecture">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">Architecture</span>
+          <h2>A spine, not a pile of scripts.</h2>
+          <p class="lead">
+            Money is integer paise everywhere; a lint fails the build if a float touches
+            the money path. Time is an injectable clock. Every identifier is a canonical
+            JSON digest, which is also what the Merkle leaves are built from.
+          </p>
+        </div>
+
+        <div class="arch" data-reveal>
+          <div class="arch-row"><span class="layer">web/</span><span class="what">zero-build ES modules · no npm, no bundler, no webfont</span></div>
+          <div class="arch-row"><span class="layer">api/</span><span class="what">FastAPI · 14 read/propose routes · SSE for the close · an MCP server</span></div>
+          <div class="arch-row"><span class="layer">recon/</span><span class="what">the six-stage ladder · assignment, subset-sum, fee algebra</span></div>
+          <div class="arch-row"><span class="layer">forecast/</span><span class="what">model ladder · rolling-origin backtest · conformal intervals</span></div>
+          <div class="arch-row"><span class="layer">qa/</span><span class="what">template-constrained NL→SQL · numeral grounding</span></div>
+          <div class="arch-row"><span class="layer">core/</span><span class="what">money · clock · policy · conformal · Merkle audit · the LLM gateway</span></div>
+        </div>
+
+        <div class="alert" data-tone="warn" style="margin-top: var(--space-6)" data-reveal>
+          <span aria-hidden="true">⚠</span>
+          <span>
+            <strong>Triveni never calls a write tool.</strong> The Razorpay adapter's
+            allowlist contains ten literal read tools, with an import-time assertion
+            that the eleven write tools never appear in it, and a test that asserts they
+            are unreachable. <code>ActionClass.MOVE_MONEY</code> is refused
+            unconditionally — there is no configuration that enables it.
+          </span>
+        </div>
+      </section>
+
+      <!-- 12 · CTA -------------------------------------------------------- -->
+      <section class="container section-sm">
+        <div class="cta" data-reveal>
+          <span class="eyebrow">Runs cold</span>
+          <h2>No keys. No network. No Razorpay account.</h2>
+          <p class="lead" style="text-align: center">
+            Clone it and run two commands. The full nine-beat narrative plays offline
+            against the seed dataset committed in the repository.
+          </p>
+          <div class="row wrap" style="justify-content: center">
+            <code class="kbd" style="height: auto; padding: var(--space-3) var(--space-5)">make setup &amp;&amp; make demo</code>
+          </div>
+          <div class="hero-actions" style="justify-content: center">
+            <a class="btn primary lg" href="./index.html">
+              Open the dashboard <span class="icon-shift" aria-hidden="true">→</span>
+            </a>
+            <a class="btn outline lg" href="/docs">API documentation</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 13 · Footer ------------------------------------------------------- -->
+    <footer class="site-foot">
+      <div class="container foot-grid">
+        <div>
+          <a class="brand" href="#top">
+            <span class="devanagari" aria-hidden="true">त्रि</span>
+            <span><span class="name">Triveni</span></span>
+          </a>
+          <p style="margin-top: var(--space-3); font-size: var(--text-sm)">
+            त्रिवेणी — the confluence of three rivers. Payments, bank, ledger.
+          </p>
+        </div>
+        <div>
+          <h4>Product</h4>
+          <ul>
+            <li><a class="link" href="./index.html">Dashboard</a></li>
+            <li><a class="link" href="#how">How it works</a></li>
+            <li><a class="link" href="#numbers">Measured results</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Engineering</h4>
+          <ul>
+            <li><a class="link" href="#judgment">Where the model is</a></li>
+            <li><a class="link" href="#architecture">Architecture</a></li>
+            <li><a class="link" href="/docs">API</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Honesty</h4>
+          <ul>
+            <li>Every figure from <code>metrics.json</code></li>
+            <li>Reproducible by <code>make eval</code></li>
+            <li>No money movement, by construction</li>
+          </ul>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="./js/landing.js"></script>
+  </body>
+</html>

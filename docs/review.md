@@ -37,7 +37,7 @@ tie-in is asserted from public positioning rather than from a document I can lin
 - Clean clone → `make setup && make demo` → the full nine-beat narrative in **8.4s**,
   no keys, no network. Verified by deleting `data/generated/`, `metrics.json` and
   `.triveni/audit.db` and re-running.
-- **840 tests**, `mypy --strict` clean on `core/` and `recon/`, `ruff` clean.
+- **872 tests**, `mypy --strict` clean on `core/` and `recon/`, `ruff` clean.
 - `make eval` twice is **byte-identical**, across processes and under
   `PYTHONHASHSEED=random` (`tests/test_eval.py:42`, `:57`).
 - Six invariants enforced in code, not convention: the float lint
@@ -117,26 +117,63 @@ worked and was invisible. A defence you cannot demonstrate is one nobody will be
 
 ---
 
-## 5 · Craft / UI — **3 / 5**
+## 5 · Craft / UI — **4 / 5**
 
-> Revised down from 4 after the dashboard was run in a browser rather than read. See
-> [What running it live found](#what-running-it-live-found). Every static test passed
-> while the page was unusable, which is the honest reason this is a 3.
+> Was 4, revised down to 3 when the dashboard turned out to be unusable in a browser
+> while 74 static tests stayed green, and now back to 4 after a full design-system
+> pass. The bug is fixed, the gap that hid it is named in `docs/limitations.md`, and
+> the surface is substantially larger than it was. It is not a 5, for the reasons at
+> the end of this section.
+
+**The design system.** 190+ tokens in one file - colour, type, space, radius, elevation,
+blur, motion, z-index, breakpoints - in two complete themes, with every component built
+against them ([ADR 0019](adr/0019-a-design-system-without-a-framework.md)). A test
+asserts every `var()` in the product resolves, and another asserts the six row states
+stay on their own hue ramps, so the brand blue can never start meaning "healthy".
+
+**A landing page that argues the case**: the netted-settlement problem, the three loops,
+the five non-negotiables with the file that enforces each, the six-stage ladder, the
+where-the-model-is-not table, and the measured numbers. **No figure on that page is
+typed by hand** — `scripts/gen_web_metrics.py` generates them from `metrics.json`, and
+two tests fail the build if the page drifts from the measurement or hard-codes one.
+
+**A 3D hero that carries the argument**: three labelled streams converging on one
+settlement core, which is what a close *is*. Written as a 120-line perspective engine on
+Canvas rather than pulled from Three.js, and the deciding reason was testability - the
+projection maths is **fifteen assertions runnable under plain Node**, covering exactly
+the errors that still draw something plausible when they are wrong.
+
+**The accessibility finding worth reporting.** Because the palette is tokens, a test can
+flatten each theme, composite the translucent chips over their surface and compute WCAG
+ratios. It immediately found that **five of the six row states failed AA for small text
+in the light theme** - between 2.86:1 and 4.44:1 against a 4.5:1 requirement, on the most
+semantically loaded colour in the product. Every one now clears it with margin, the
+worst at 5.02:1. That defect had been in the product since M16 and no amount of looking
+at it would have found it.
+
+**Why not 5.** Still no Lighthouse run and still no cross-browser testing, so neither is
+claimed. And the deeper gap is unchanged: **every test here is static.** They prove the
+source is self-consistent - that ratios computed from tokens are sound, that every
+identifier resolves - and none of them proves the browser agrees. That is the same class
+of blindness that let an undismissable modal ship, and it is closed only by a headless
+browser this project does not have.
 
 
-Eight screens, **197 KB, zero dependencies, zero build step**, served by the API process
-([ADR 0018](adr/0018-a-zero-build-dashboard.md)). Both themes as complete token sets with
-`[data-theme]` beating `prefers-color-scheme` in both directions; money always
-tabular-nums with Indian grouping; every animation a no-op under reduced motion, guarded
-centrally in `tokens.css` so it cannot be forgotten per-component; keyboard-complete with
-`aria-live` on async regions; responsive to 390px.
+**The rest of the surface.** A landing page and eight screens, **zero dependencies, zero
+build step**, served by the API process ([ADR 0018](adr/0018-a-zero-build-dashboard.md),
+[ADR 0019](adr/0019-a-design-system-without-a-framework.md)). Both themes as complete
+token sets with `[data-theme]` beating `prefers-color-scheme` in both directions; money
+always tabular-nums with Indian grouping; every animation a no-op under reduced motion,
+guarded centrally in `tokens.css` so it cannot be forgotten per-component; one shared
+dialog module so Escape, the focus trap, the scrim click and the focus restore are
+implemented once rather than four times with a different subset each; the rail becomes a
+drawer and tables reflow to labelled cards below 64rem; responsive to 390px.
 
-**Why not 5.** No Lighthouse run, so no score is claimed. No cross-browser testing. And
-the screens were authored partly in parallel, which showed: the review found an
-inconsistent `balanced` default that could stamp a green "balanced to ₹0" seal over books
-that were short (`web/js/screens/waterfall.js:331`, now `=== true`), and a band whose
-lower edge was drawn time-reversed. Both are fixed, but a UI that needed an adversarial
-pass to find them is not a 5.
+Two earlier defects on this surface are worth keeping on the record, because both were
+found by an adversarial pass rather than by looking: an inconsistent `balanced` default
+that could stamp a green "balanced to ₹0" seal over books that were short
+(`web/js/screens/waterfall.js:331`, now `=== true`), and a confidence band whose lower
+edge was drawn time-reversed.
 
 ---
 
@@ -315,7 +352,7 @@ does.** Closing that gap properly needs a headless browser, which
 
 ## Honest summary
 
-**4 / 5 · 4 / 5 · 5 / 5 · 5 / 5**, and 3/5 on craft.
+**4 / 5 · 4 / 5 · 5 / 5 · 5 / 5**, and 4/5 on craft.
 
 The strongest thing here is that the interesting numbers are the *unflattering* ones and
 they are all on the page: recall is 82.90% and not hidden behind the 95.34% match rate;

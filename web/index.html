@@ -8,7 +8,10 @@
       name="description"
       content="Three ledgers, one balanced set of books, with a statistically guaranteed error bound."
     />
+    <meta name="color-scheme" content="light dark" />
     <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./styles/base.css" />
+    <link rel="stylesheet" href="./styles/components.css" />
     <link rel="stylesheet" href="./styles/app.css" />
     <link rel="stylesheet" href="./styles/screens.css" />
     <link
@@ -30,26 +33,80 @@
   <body>
     <a class="sr-only" href="#main">Skip to content</a>
 
-    <div class="app">
-      <header class="header">
-        <div class="brand">
+    <!-- Four inert layers: ground, aurora, grid, grain. Never interactive, never
+         announced. See base.css for why each one is there. -->
+    <div class="backdrop" aria-hidden="true">
+      <div class="aurora aurora-1"></div>
+      <div class="aurora aurora-2"></div>
+      <div class="aurora aurora-3"></div>
+      <div class="grid-layer"></div>
+      <div class="noise-layer"></div>
+    </div>
+
+    <div class="app" id="app">
+      <aside class="rail" id="rail" aria-label="Screens">
+        <a class="brand" href="./landing.html">
           <span class="devanagari" aria-hidden="true">त्रि</span>
-          <span>Triveni</span>
-          <span class="tagline">three ledgers, one set of books</span>
-        </div>
+          <span>
+            <span class="name">Triveni</span>
+            <span class="tagline">three ledgers, one set of books</span>
+          </span>
+        </a>
 
         <nav class="nav" aria-label="Screens">
-          <button data-screen="confluence" aria-current="page">Confluence</button>
-          <button data-screen="stages">Stages</button>
-          <button data-screen="alpha">α slider</button>
-          <button data-screen="triage">Triage</button>
-          <button data-screen="waterfall">Settlement</button>
-          <button data-screen="forecast">Forecast</button>
-          <button data-screen="audit">Audit</button>
-          <button data-screen="report">Report</button>
+          <p class="nav-label">Close</p>
+          <button data-screen="confluence" aria-current="page">
+            <span class="n" aria-hidden="true">1</span> Confluence
+          </button>
+          <button data-screen="stages"><span class="n" aria-hidden="true">2</span> Stages</button>
+          <button data-screen="alpha"><span class="n" aria-hidden="true">3</span> α slider</button>
+          <button data-screen="triage"><span class="n" aria-hidden="true">4</span> Triage</button>
+
+          <p class="nav-label">Explain</p>
+          <button data-screen="waterfall"><span class="n" aria-hidden="true">5</span> Settlement</button>
+
+          <p class="nav-label">Foresee</p>
+          <button data-screen="forecast"><span class="n" aria-hidden="true">6</span> Forecast</button>
+
+          <p class="nav-label">Evidence</p>
+          <button data-screen="audit"><span class="n" aria-hidden="true">7</span> Audit</button>
+          <button data-screen="report"><span class="n" aria-hidden="true">8</span> Report</button>
         </nav>
 
-        <div class="header-actions">
+        <div class="rail-foot">
+          <span class="model-status" id="rail-status" title="Operating mode">
+            <span class="status-dot" data-live="true" aria-hidden="true"></span>
+            <span id="rail-mode">connecting…</span>
+          </span>
+          <p class="faint" style="font-size: var(--text-xs)">
+            No credentials. No money movement. Reads and proposes only.
+          </p>
+        </div>
+      </aside>
+
+      <div class="scrim" id="rail-scrim" hidden></div>
+
+      <header class="topbar">
+        <div class="topbar-meta">
+          <button
+            class="btn ghost icon-btn rail-toggle"
+            id="rail-toggle"
+            aria-label="Open navigation"
+            aria-expanded="false"
+            aria-controls="rail"
+          >
+            <span aria-hidden="true">☰</span>
+          </button>
+          <span class="hide-xs">Books for</span>
+          <strong class="num" id="topbar-date">2026-03-31</strong>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="palette-trigger" id="palette-trigger" aria-label="Open the command palette">
+            <span aria-hidden="true">⌕</span>
+            <span class="grow">Search or jump to…</span>
+            <span class="kbd" aria-hidden="true">Ctrl K</span>
+          </button>
           <button
             class="btn icon-btn ghost"
             id="theme-toggle"
@@ -58,7 +115,12 @@
           >
             <span aria-hidden="true" id="theme-icon">◐</span>
           </button>
-          <button class="btn ghost icon-btn" id="help-toggle" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">
+          <button
+            class="btn ghost icon-btn"
+            id="help-toggle"
+            title="Keyboard shortcuts"
+            aria-label="Keyboard shortcuts"
+          >
             <span aria-hidden="true">?</span>
           </button>
         </div>
@@ -78,7 +140,9 @@
       </main>
     </div>
 
-    <div id="help" class="help-overlay" hidden role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"></div>
+    <div id="palette" class="palette" hidden role="dialog" aria-modal="true" aria-label="Command palette"></div>
+    <div id="help" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"></div>
+    <div class="toast-region" id="toasts" role="region" aria-label="Notifications"></div>
     <div id="live" class="sr-only" aria-live="polite" aria-atomic="false"></div>
 
     <script type="module" src="./js/app.js"></script>

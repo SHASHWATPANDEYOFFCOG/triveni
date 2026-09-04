@@ -89,6 +89,23 @@ perfect while proving nothing.
   then, treat "the dashboard tests pass" as "the source is self-consistent", not as
   "the page works".
 
+  Two things that *look* like they need a browser have since been pulled back into CI,
+  and it is worth being precise about which:
+
+  - **WCAG contrast is arithmetic**, so a test flattens each theme, composites the
+    translucent chips over their surface and computes the ratios. That found five of
+    the six row states failing AA for small text in the light theme — a defect that had
+    been shipping since M16 and that no amount of looking at the screen would have
+    caught. Fixed; all twelve pairings now clear 4.5:1.
+  - **The 3D projection maths is arithmetic too**, and is fifteen assertions under
+    plain Node ([ADR 0019](adr/0019-a-design-system-without-a-framework.md)) — which is
+    a large part of why the hero was written by hand rather than pulled from a library.
+
+  Neither closes the gap. Contrast tokens can be correct while a component sets a
+  colour those tokens never reach; projection can be correct while the canvas is
+  positioned off-screen. **What is still uncovered is everything that only exists once
+  a browser has laid the page out.**
+
 ## Deliberately excluded
 
 - **No `torch` / `sentence-transformers`.** A cold `make demo` must not download
