@@ -23,7 +23,7 @@ import { esc, formatDate } from "../format.js";
 import { stagger } from "../motion.js";
 import { api } from "../api.js";
 
-const TAMPER_COMMAND = "python -m core.audit.verify --tamper 4";
+const TAMPER_COMMAND = "python -m core.audit.verify --tamper";
 
 export function render(container, state) {
   container.innerHTML = `

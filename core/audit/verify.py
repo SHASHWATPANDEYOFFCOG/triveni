@@ -9,13 +9,16 @@ at which the log stopped telling the truth.
     python -m core.audit.verify --db path/to.db       # verify a specific log
     python -m core.audit.verify --prove 42            # inclusion proof for record 42
     python -m core.audit.verify --consistency 100 400 # append-only proof between sizes
-    python -m core.audit.verify --tamper 4            # break it on purpose, then report
+    python -m core.audit.verify --tamper              # break the newest record, then heal
+    python -m core.audit.verify --tamper 0            # break a specific record
+    python -m core.audit.verify --tamper --keep-tampered  # leave it broken, to inspect
     python -m core.audit.verify --json                # machine-readable output
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -61,8 +64,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--tamper",
         type=int,
+        nargs="?",
+        const=-1,
         metavar="SEQ",
-        help="ADVERSARY SIMULATION: rewrite a committed record, then verify (demo only)",
+        help=(
+            "ADVERSARY SIMULATION: rewrite a committed record, then verify (demo only). "
+            "With no index, corrupts the most recent record - which always exists."
+        ),
+    )
+    parser.add_argument(
+        "--keep-tampered",
+        action="store_true",
+        help=(
+            "leave the record corrupted after --tamper, for inspecting the database "
+            "by hand. The default restores it, because a simulation that permanently "
+            "breaks the log is not a simulation."
+        ),
     )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     return parser
@@ -76,8 +93,34 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{_DIM}run `make demo` first - it closes a day's books and writes the log{_RESET}")
         return 2
 
-    with AuditLog(args.db) as log:
+    with contextlib.ExitStack() as stack:
+        log = stack.enter_context(AuditLog(args.db))
         if args.tamper is not None:
+            # A fresh `make demo` writes ONE audit record, so the `--tamper 4` this
+            # tool printed in its own success message - and that the README, the
+            # video script, the review's failure-recovery table and the audit screen
+            # all promised - died with an unhandled AuditError on a clean clone. It
+            # only ever worked here because twenty-one records had accumulated across
+            # a session's repeated runs.
+            #
+            # `--tamper` with no index now targets the most recent record, which
+            # exists by definition. An explicit out-of-range index gets a sentence
+            # naming the valid range instead of a traceback.
+            size = log.size
+            if size == 0:
+                print(f"{_RED}the audit log is empty; nothing to tamper with{_RESET}")
+                print(f"{_DIM}run `make demo` first{_RESET}")
+                return 2
+            if args.tamper < 0:
+                args.tamper = size - 1
+            elif args.tamper >= size:
+                print(
+                    f"{_RED}no record {args.tamper}: the log holds {size} record(s), "
+                    f"so valid indices are 0..{size - 1}{_RESET}"
+                )
+                print(f"{_DIM}run `--tamper` with no index to corrupt the most recent one{_RESET}")
+                return 2
+
             original = log.record_at(args.tamper)
             print(
                 f"{_DIM}adversary simulation: rewriting the reason on record "
@@ -85,6 +128,19 @@ def main(argv: list[str] | None = None) -> int:
                 f"append-only triggers{_RESET}\n"
             )
             log.tamper_for_demo(args.tamper, "approved by finance head")
+            # Registered BEFORE the report runs, so the log is healed on every exit
+            # path - a clean return, a failed check, or an exception.
+            #
+            # This is billed as a simulation, and it was not one: the CLI corrupted
+            # the record and never called `restore_from_demo_tamper`, which exists
+            # for exactly this and was only ever wired to the dashboard. So a judge
+            # ran the command this tool prints in its own success message, and every
+            # `/audit/verify` after that reported BROKEN for the rest of the session.
+            # Demonstrating a defence must not leave the thing it defends damaged.
+            if not args.keep_tampered:
+                stack.callback(
+                    log.restore_from_demo_tamper, args.tamper, original.reason
+                )
             print(f"{_DIM}  was: {original.reason!r}{_RESET}")
             print(f"{_DIM}  now: 'approved by finance head'{_RESET}\n")
 
@@ -156,7 +212,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(
                     f"\n{_DIM}This is the RFC 6962 construction that secures the web PKI,"
                     f"\napplied to a financial decision log. Try: "
-                    f"python -m core.audit.verify --tamper 4{_RESET}"
+                    f"python -m core.audit.verify --tamper{_RESET}"
                 )
         return 0 if report.ok else 1
 

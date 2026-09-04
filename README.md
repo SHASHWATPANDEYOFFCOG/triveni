@@ -199,7 +199,7 @@ while 5–11 do not — locating the tampering in time as well as position.
 
 ```bash
 make verify                                # re-derive the root, locate any tampering
-python -m core.audit.verify --tamper 4     # break it on purpose and watch the proof fail
+python -m core.audit.verify --tamper     # break it on purpose and watch the proof fail
 ```
 
 ## Failure recovery — each one a single command
@@ -209,7 +209,7 @@ python -m core.audit.verify --tamper 4     # break it on purpose and watch the p
 | prompt injection in a bank narration | denied at **ingest**, logged with matched patterns | `make redteam` |
 | a corrupt CSV row | kept as a typed `corrupt_row` exception with its raw payload | `make demo` |
 | an ambiguous many-to-one | abstains with evidence rather than guessing | `make demo` |
-| a tampered audit row | proof fails at the exact index | `python -m core.audit.verify --tamper 4` |
+| a tampered audit row | proof fails at the exact index | `python -m core.audit.verify --tamper` |
 | an unanswerable question | abstains and shows the table it would have used | `python -m scripts.qa_adversarial` |
 | the model switched off entirely | matching is unchanged at 270 groups | `TRIVENI_LLM_MODE=off make demo` |
 

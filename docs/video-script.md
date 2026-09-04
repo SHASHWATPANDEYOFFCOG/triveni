@@ -157,7 +157,7 @@ python -m scripts.qa_adversarial
 > re-chain, and every link still verifies.
 
 ```bash
-python -m core.audit.verify --tamper 4
+python -m core.audit.verify --tamper
 ```
 
 > Tamper with record four. It reports index four — *and* that heads one through four still

@@ -112,7 +112,7 @@ not-crashing.
 | prompt injection in a narration | denied **at ingest**, logged with matched patterns | `make redteam` |
 | a corrupt CSV row | typed `corrupt_row` exception with its raw payload; batch continues | `make demo` |
 | an ambiguous many-to-one | abstains with evidence and a stated reason | `make demo` |
-| a tampered audit row | proof fails at the **exact index**, and dates the tampering | `python -m core.audit.verify --tamper 4` |
+| a tampered audit row | proof fails at the **exact index**, and dates the tampering | `python -m core.audit.verify --tamper` |
 | an unanswerable question | abstains and shows the table it would have used | `python -m scripts.qa_adversarial` |
 | the model switched off | matching unchanged at 270 groups | `TRIVENI_LLM_MODE=off make demo` |
 | a forged audit receipt | `UnauditedAction`; the side effect never runs | `tests/test_policy.py` |

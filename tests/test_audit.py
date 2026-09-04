@@ -380,3 +380,107 @@ def test_verify_cli_is_helpful_when_there_is_no_log(tmp_path, capsys) -> None:
 
     assert verify_cli.main(["--db", str(tmp_path / "missing.db")]) == 2
     assert "make demo" in capsys.readouterr().out
+
+
+def test_the_tamper_simulation_heals_the_log_afterwards(tmp_path, capsys) -> None:
+    """It is billed as a simulation, and it was not one.
+
+    The CLI corrupted a committed record and never called `restore_from_demo_tamper`,
+    which exists for exactly this purpose and had only ever been wired to the
+    dashboard's Restore button. So anyone who ran the command this tool prints in its
+    own success message left the log permanently broken, and every subsequent
+    `/audit/verify` reported BROKEN for the rest of the session.
+
+    Demonstrating a defence must not leave the thing it defends damaged.
+    """
+    from core.audit import verify as verify_cli
+
+    log = make_log(tmp_path, 10)
+    log.close()
+    db = str(tmp_path / "audit.db")
+
+    # The tamper run itself must still fail and localise.
+    assert verify_cli.main(["--db", db, "--tamper", "3"]) == 1
+    assert "TAMPERING LOCALISED AT INDEX 3" in capsys.readouterr().out
+
+    # And the log must be intact again immediately afterwards.
+    assert verify_cli.main(["--db", db]) == 0, "the simulation left the log corrupted"
+    assert "VERIFIED" in capsys.readouterr().out
+
+
+def test_keep_tampered_leaves_the_log_broken_on_purpose(tmp_path, capsys) -> None:
+    """The escape hatch for inspecting the database by hand. It has to be asked for."""
+    from core.audit import verify as verify_cli
+
+    log = make_log(tmp_path, 10)
+    log.close()
+    db = str(tmp_path / "audit.db")
+
+    assert verify_cli.main(["--db", db, "--tamper", "3", "--keep-tampered"]) == 1
+    capsys.readouterr()
+    assert verify_cli.main(["--db", db]) == 1, "--keep-tampered must NOT restore"
+
+
+def test_the_documented_tamper_command_works_on_a_one_record_log(tmp_path, capsys) -> None:
+    """A fresh `make demo` writes exactly ONE audit record.
+
+    The command promised in the README, the video script, the review's
+    failure-recovery table, this tool's own success message and the audit screen was
+    `--tamper 4`, which died with an unhandled `AuditError` on any log with fewer than
+    five records — i.e. on every clean clone. It only ever appeared to work because a
+    development session had accumulated twenty-one records across repeated runs.
+
+    `--tamper` with no index targets the most recent record, which exists by
+    definition.
+    """
+    from core.audit import verify as verify_cli
+
+    log = make_log(tmp_path, 1)
+    log.close()
+    db = str(tmp_path / "audit.db")
+
+    assert verify_cli.main(["--db", db, "--tamper"]) == 1
+    assert "TAMPERING LOCALISED AT INDEX 0" in capsys.readouterr().out
+    assert verify_cli.main(["--db", db]) == 0
+
+
+def test_an_out_of_range_tamper_index_explains_itself(tmp_path, capsys) -> None:
+    """A traceback is not an error message. It must name the valid range."""
+    from core.audit import verify as verify_cli
+
+    log = make_log(tmp_path, 2)
+    log.close()
+
+    assert verify_cli.main(["--db", str(tmp_path / "audit.db"), "--tamper", "9"]) == 2
+    out = capsys.readouterr().out
+    assert "no record 9" in out and "0..1" in out
+    assert "Traceback" not in out
+
+
+def test_no_document_promises_a_tamper_index_that_may_not_exist() -> None:
+    """Every place that prints the command must print one that works on a fresh log."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    offenders = []
+    for path in [
+        root / "README.md",
+        root / "docs" / "review.md",
+        root / "docs" / "video-script.md",
+        root / "core" / "audit" / "verify.py",
+        root / "web" / "js" / "screens" / "audit.js",
+    ]:
+        text = path.read_text(encoding="utf-8")
+        # Strip the comment that explains the historical bug; it names the old form
+        # deliberately.
+        text = re.sub(r"^\s*#.*$", "", text, flags=re.M)
+        for match in re.findall(r"core\.audit\.verify --tamper (\d+)", text):
+            # 0 always exists whenever a log exists at all, so it is a safe example.
+            if match != "0":
+                offenders.append(f"{path.name}: --tamper {match}")
+
+    assert not offenders, (
+        "these promise a fixed record index that a one-record log does not have: "
+        f"{offenders}. Use bare `--tamper`."
+    )
