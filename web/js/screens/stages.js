@@ -31,8 +31,8 @@ export function render(container, state) {
   if (!close || !Array.isArray(close.stages) || close.stages.length === 0) {
     container.innerHTML = `
       <div class="screen-head">
-        <div class="eyebrow">Loop 1 · Close</div>
-        <h1>Stage ladder</h1>
+        <div class="eyebrow">Close</div>
+        <h1>Pipeline</h1>
       </div>
       <div class="empty">
         <h3>No close to break down yet</h3>
@@ -47,8 +47,8 @@ export function render(container, state) {
 
   container.innerHTML = `
     <div class="screen-head">
-      <div class="eyebrow">Loop 1 · Close</div>
-      <h1>Where the match rate comes from</h1>
+      <div class="eyebrow">Close</div>
+      <h1>Pipeline</h1>
       <p>
         Five staged passes, cheapest and most certain first. A later stage may only
         <em>add</em> - one that wants to overwrite an earlier match raises a conflict

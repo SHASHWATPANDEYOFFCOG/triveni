@@ -76,8 +76,8 @@ export function render(container, state, helpers) {
 
   container.innerHTML = `
     <div class="screen-head">
-      <div class="eyebrow">Loop 2 · Settlement</div>
-      <h1>Gross to net, and every rupee in between</h1>
+      <div class="eyebrow">Explain</div>
+      <h1>Settlements</h1>
       <p>
         A settlement is short, and <strong>"fees" is not an answer</strong>. Each deduction
         is named, given the rate it was computed from, and traced back to the rows it came

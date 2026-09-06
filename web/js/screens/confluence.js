@@ -54,15 +54,15 @@ export function render(container, state, { showScreen } = {}) {
 
   container.innerHTML = `
     <div class="screen-head">
-      <div class="row-between wrap">
+      <div class="top">
         <div>
           <div class="eyebrow">
             <span class="status-dot" data-live="${close ? "false" : "true"}" aria-hidden="true"></span>
             Close · ${esc(state.date)}
           </div>
-          <h2>Today's books</h2>
+          <h2>Overview</h2>
         </div>
-        <div class="row wrap">
+        <div class="acts">
           <button class="btn outline" id="go-triage">
             Review exceptions <span class="icon-shift" aria-hidden="true">→</span>
           </button>

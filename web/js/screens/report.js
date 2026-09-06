@@ -30,7 +30,7 @@ export function render(container, state) {
   if (!close) {
     container.innerHTML = `
       <div class="screen-head">
-        <div class="eyebrow">Report</div>
+        <div class="eyebrow">Evidence</div>
         <h1>Run report</h1>
       </div>
       <div class="empty">

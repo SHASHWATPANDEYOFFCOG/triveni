@@ -28,8 +28,8 @@ const TAMPER_COMMAND = "python -m core.audit.verify --tamper";
 export function render(container, state) {
   container.innerHTML = `
     <div class="screen-head">
-      <div class="eyebrow">The spine · M2</div>
-      <h1>The books prove themselves</h1>
+      <div class="eyebrow">Evidence</div>
+      <h1>Audit log</h1>
       <p>
         Not a hash chain. This is the RFC 6962 construction that secures the web PKI,
         applied to a financial decision log — so it can prove a record is present in

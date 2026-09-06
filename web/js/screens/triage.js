@@ -26,8 +26,8 @@ export function render(container, state) {
   if (all.length === 0) {
     container.innerHTML = `
       <div class="screen-head">
-        <div class="eyebrow">Loop 1 · Triage</div>
-        <h1>Exception inbox</h1>
+        <div class="eyebrow">Close</div>
+        <h1>Exceptions</h1>
       </div>
       <div class="empty">
         <h3>Nothing needs a human</h3>
@@ -43,8 +43,15 @@ export function render(container, state) {
 
   container.innerHTML = `
     <div class="screen-head">
-      <div class="eyebrow">Loop 1 · Triage</div>
-      <h1>What needs a person</h1>
+      <div class="eyebrow">Close</div>
+      <div class="top">
+        <h1>Exceptions</h1>
+      </div>
+      <div class="headmeta">
+        <span class="m"><b>${(state.exceptions ?? []).length}</b> open</span>
+        <span class="m" data-tone="bad"><b>${(state.exceptions ?? []).filter((x) => x.severity === "high").length}</b> high</span>
+        <span class="m">${esc(state.date)}</span>
+      </div>
       <p>
         Every row here is a typed exception with its evidence attached and a sentence
         saying why the system stopped rather than guessing.

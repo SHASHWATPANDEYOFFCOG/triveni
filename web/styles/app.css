@@ -245,20 +245,99 @@
   to { opacity: 1; transform: none; }
 }
 
-.screen-head { margin-bottom: var(--space-6); }
+/* The page header.
+ *
+ * This replaced an essay headline on every screen. The old headers said things like
+ * "The spine - M2" and "Gross to net, and every rupee in between": the first names a
+ * BUILD MILESTONE, which no product has ever shown a user, and the second is a pitch
+ * line. Both told you what the author thought was interesting and neither told you
+ * where you were or what state the thing was in.
+ *
+ * A product header does three jobs, in this order:
+ *
+ *   1. NAME the screen, plainly. "Audit log", not "The books prove themselves".
+ *   2. Show LIVE STATE next to the name - counts, the date, whether it is verified -
+ *      so the header is worth reading every time rather than being static furniture.
+ *   3. Offer the ACTIONS for this screen, right-aligned, primary last.
+ *
+ * The explanation did not get deleted; it moved. The "why this matters" is one
+ * subtitle line, and the "how do I use this" is the guidance strip directly below,
+ * which is dismissible. Explanation that cannot be dismissed is explanation the
+ * regular user reads once and then scrolls past forever. */
+.screen-head {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--rule);
+}
 
+.screen-head .top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.screen-head h1,
 .screen-head h2 {
   font-size: var(--text-h3);
+  font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
 }
 
 .screen-head .eyebrow { margin-bottom: var(--space-2); }
 
 .screen-head p {
-  margin-top: var(--space-2);
   max-width: var(--max-w-prose);
   color: var(--fg-muted);
   font-size: var(--text-sm);
+}
+
+/* Live state, sitting with the name. Each chip is a real value read off the current
+ * result - never a decorative label. A chip that never changes belongs in prose. */
+.headmeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--fg-muted);
+}
+
+.headmeta .m {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.headmeta .m b { color: var(--fg); font-weight: var(--weight-semibold); }
+.headmeta .m[data-tone="ok"] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 32%, transparent); background: var(--ok-bg); }
+.headmeta .m[data-tone="ok"] b { color: var(--ok); }
+.headmeta .m[data-tone="warn"] { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); background: var(--warn-bg); }
+.headmeta .m[data-tone="warn"] b { color: var(--warn); }
+.headmeta .m[data-tone="bad"] { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 32%, transparent); background: var(--bad-bg); }
+.headmeta .m[data-tone="bad"] b { color: var(--bad); }
+
+.screen-head .acts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+@media (max-width: 40rem) {
+  .screen-head .acts { width: 100%; }
+  .screen-head .acts .btn { flex: 1 1 auto; }
 }
 
 /* ========================================================================= */

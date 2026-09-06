@@ -64,8 +64,8 @@ export function render(container, state, helpers = {}) {
 
   container.innerHTML = `
     <div class="screen-head">
-      <div class="eyebrow">Loop 3 · Forecast</div>
-      <h1>The cash that will actually land</h1>
+      <div class="eyebrow">Foresee</div>
+      <h1>Cash forecast</h1>
       <p>
         Built from <strong>reconciled bank credits</strong>, not gateway captures.
         Captures tell you what was sold; only the bank side tells you what arrived, and

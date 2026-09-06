@@ -60,8 +60,8 @@ export function render(container, state) {
   if (!state.close) {
     container.innerHTML = `
       <div class="screen-head">
-        <div class="eyebrow">The guarantee</div>
-        <h1>The α slider</h1>
+        <div class="eyebrow">Close</div>
+        <h1>Error bound</h1>
       </div>
       <div class="empty">
         <h3>No calibration to explore yet</h3>
@@ -76,8 +76,8 @@ export function render(container, state) {
 
   container.innerHTML = `
     <div class="screen-head">
-      <div class="eyebrow">The guarantee · M12</div>
-      <h1>How wrong are you willing to be?</h1>
+      <div class="eyebrow">Close</div>
+      <h1>Error bound</h1>
       <p>
         Most reconciliation tools ship a confidence threshold somebody tried once.
         This one is <strong>fitted</strong>: pick the error rate you can live with and

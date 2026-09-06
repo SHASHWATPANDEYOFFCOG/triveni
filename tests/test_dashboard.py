@@ -1060,3 +1060,85 @@ def test_the_tooltip_component_is_actually_used() -> None:
     assert ".term" in read(WEB / "styles" / "components.css"), (
         "an explained term needs a visible affordance, not just a hover target"
     )
+
+
+# --------------------------------------------------------------------------- #
+# Product language
+# --------------------------------------------------------------------------- #
+def test_no_screen_shows_the_user_a_build_artefact() -> None:
+    """The interface was still speaking the build's language, not the product's.
+
+    The audit screen's header read "The spine · M2". M2 is a *milestone number* from
+    this project's own construction — no product has ever shown a user one. Three more
+    screens were labelled "Loop 1 / Loop 2 / Loop 3", which is the architecture pitch,
+    not what anyone calls a screen they are looking at.
+
+    These leak because they are genuinely useful vocabulary while building, so they get
+    typed without noticing. The test is the only thing that notices.
+    """
+    banned = {
+        r"\bM\d{1,2}\b(?!\s*[a-z])": "a build milestone number",
+        r"\bLoop [123]\b": "the internal architecture pitch",
+        r"\bthe spine\b": "internal shorthand for the core module",
+        r"\bstage\d\b": "an internal stage id",
+    }
+
+    offenders = []
+    for path in SCREENS:
+        source = read(path)
+        # Only the rendered header, not comments or code: `stage4` is a legitimate
+        # data key, and the module docstrings are for developers.
+        for head in re.findall(r'<div class="screen-head">(.*?)</div>\s*\n\s*\n', source, re.S):
+            for pattern, why in banned.items():
+                for hit in re.findall(pattern, head, re.I):
+                    offenders.append(f"{path.name}: {hit!r} — {why}")
+
+    assert not offenders, (
+        "build vocabulary is visible in a screen header:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_every_screen_header_names_the_screen() -> None:
+    """A header's first job is to say where you are.
+
+    The old headers were essay titles — "The books prove themselves", "Gross to net,
+    and every rupee in between", "How wrong are you willing to be?". Each is a good
+    sentence and none of them is a screen name, so nothing on the page told you which
+    of the eight screens you were looking at except the sidebar.
+
+    A product name is short and is a noun. The explanation did not get deleted, it
+    moved: one subtitle line, plus the dismissible guidance strip below it.
+    """
+    for path in SCREENS:
+        source = read(path)
+        titles = re.findall(r"<h1>\s*(.*?)\s*</h1>|<h2>\s*(.*?)\s*</h2>", source, re.S)
+        rendered = [
+            re.sub(r"<[^>]+>|\$\{[^}]*\}", "", (a or b)).strip()
+            for a, b in titles
+        ]
+        rendered = [t for t in rendered if t]
+        assert rendered, f"{path.name} renders no screen title"
+
+        for title in rendered:
+            words = title.split()
+            assert len(words) <= 4, (
+                f"{path.name}: {title!r} is a sentence, not a screen name. "
+                "Move the explanation to the subtitle or the guide."
+            )
+            assert not title.endswith("?"), (
+                f"{path.name}: {title!r} — a question is a headline, not a name"
+            )
+
+
+def test_the_page_header_carries_live_state() -> None:
+    """A header worth reading twice shows something that changes.
+
+    Static furniture gets skipped after the first visit. At least one screen must
+    prove the pattern works by putting real counts next to the name.
+    """
+    app = _strip_css_comments(read(WEB / "styles" / "app.css"))
+    assert ".headmeta" in app, "the header needs a slot for live state"
+    assert ".screen-head .acts" in app, "the header needs a slot for this screen's actions"
+
+    users = [p.name for p in SCREENS if "headmeta" in read(p)]
+    assert users, "no screen uses the live-state slot, so the pattern is unproven"
